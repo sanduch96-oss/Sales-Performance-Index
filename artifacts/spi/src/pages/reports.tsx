@@ -1,9 +1,11 @@
 import { useGetDashboardSummary, useGetMonthlyTrend } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function Reports() {
+  const { t } = useLanguage();
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: trend, isLoading: isLoadingTrend } = useGetMonthlyTrend();
 
@@ -16,15 +18,15 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Rapoarte și Analize</h2>
-        <p className="text-muted-foreground">Statistici detaliate privind calitatea apelurilor și performanța echipei.</p>
+        <h2 className="text-3xl font-bold tracking-tight">{t.reports.title}</h2>
+        <p className="text-muted-foreground">{t.reports.subtitle}</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Evoluție Scor Mediu (6 luni)</CardTitle>
-            <CardDescription>Trendul scorului mediu la nivelul întregii echipe.</CardDescription>
+            <CardTitle>{t.reports.trendTitle}</CardTitle>
+            <CardDescription>{t.reports.trendDesc}</CardDescription>
           </CardHeader>
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -33,7 +35,7 @@ export default function Reports() {
                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Line type="monotone" dataKey="averageScore" name="Scor Mediu" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="averageScore" name={t.reports.avgScore} stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -41,8 +43,8 @@ export default function Reports() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Volum Evaluări</CardTitle>
-            <CardDescription>Numărul de evaluări realizate în ultimele luni.</CardDescription>
+            <CardTitle>{t.reports.volumeTitle}</CardTitle>
+            <CardDescription>{t.reports.volumeDesc}</CardDescription>
           </CardHeader>
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -51,7 +53,7 @@ export default function Reports() {
                 <XAxis dataKey="month" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Bar dataKey="count" name="Număr Evaluări" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t.reports.evalCount} fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -60,8 +62,8 @@ export default function Reports() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Performanță pe secțiuni</CardTitle>
-          <CardDescription>Scorul mediu global pentru fiecare etapă a interacțiunii.</CardDescription>
+          <CardTitle>{t.reports.sectionsTitle}</CardTitle>
+          <CardDescription>{t.reports.sectionsDesc}</CardDescription>
         </CardHeader>
         <CardContent className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -70,7 +72,7 @@ export default function Reports() {
               <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="sectionName" axisLine={false} tickLine={false} />
               <Tooltip />
-              <Bar dataKey="averageScore" name="Scor (%)" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={24} />
+              <Bar dataKey="averageScore" name={t.reports.scoreLabel} fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

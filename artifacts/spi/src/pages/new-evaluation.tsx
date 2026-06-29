@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { 
   useListSpecialists, 
   useListCriteriaSections, 
@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/contexts/language-context";
 
 type ScoreLevel = "good" | "medium" | "poor";
 
@@ -31,33 +32,34 @@ export default function NewEvaluation() {
   const search = useSearch();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const params = new URLSearchParams(search);
   const prefilledSpecialistId = params.get("specialistId") ?? "";
   const editIdParam = params.get("editId");
   const editId = editIdParam ? parseInt(editIdParam) : null;
   const isEditMode = editId !== null && !isNaN(editId);
-  
+
   const { data: me } = useGetMe();
   const { data: specialists, isLoading: isLoadingSpec } = useListSpecialists({ archived: false });
   const { data: sections, isLoading: isLoadingSec } = useListCriteriaSections();
   const { data: existingEval, isLoading: isLoadingExisting } = useGetEvaluation(editId ?? 0, {
     query: { enabled: isEditMode, queryKey: getGetEvaluationQueryKey(editId ?? 0) }
   });
-  
+
   const createEvaluation = useCreateEvaluation();
   const updateEvaluation = useUpdateEvaluation();
   const finalizeEvaluation = useFinalizeEvaluation();
   const attachAudio = useAttachEvaluationAudio();
-  
+
   const [formData, setFormData] = useState({
     specialistId: prefilledSpecialistId,
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     time: new Date().toTimeString().substring(0, 5),
     clientName: "",
     evaluationType: "call" as "call" | "meeting" | "chat"
   });
-  
+
   const [scores, setScores] = useState<Record<number, { level: ScoreLevel; comment: string }>>({});
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,20 +88,20 @@ export default function NewEvaluation() {
   }, [existingEval, isEditMode, prefilled]);
 
   const calculateScore = () => {
-    if (!sections) return { total: 0, bySection: {} as Record<number, { score: number; max: number; percentage: number }>, level: "Slab" };
-    
+    if (!sections) return { total: 0, bySection: {} as Record<number, { score: number; max: number; percentage: number }>, level: "" };
+
     let totalScore = 0;
     let totalWeight = 0;
     const bySection: Record<number, { score: number; max: number; percentage: number }> = {};
-    
+
     sections.forEach(section => {
       let secScore = 0;
       let secMax = 0;
-      
+
       section.criteria.forEach(crit => {
         secMax += crit.weight;
         totalWeight += crit.weight;
-        
+
         const critScore = scores[crit.id];
         if (critScore) {
           const val = critScore.level === "good" ? crit.weight : critScore.level === "medium" ? crit.weight * 0.6 : 0;
@@ -107,21 +109,21 @@ export default function NewEvaluation() {
           totalScore += val;
         }
       });
-      
+
       bySection[section.id] = {
         score: secScore,
         max: secMax,
         percentage: secMax > 0 ? (secScore / secMax) * 100 : 0
       };
     });
-    
+
     const finalScore = totalWeight > 0 ? (totalScore / totalWeight) * 100 : 0;
-    const level = finalScore >= 80 ? "Excelent" : finalScore >= 70 ? "Bun" : "Slab";
-    
+    const level = finalScore >= 80 ? t.newEval.excellent : finalScore >= 70 ? t.newEval.good : t.newEval.poor;
+
     return { total: Math.round(finalScore), bySection, level };
   };
 
-  const { total, bySection, level } = useMemo(calculateScore, [scores, sections]);
+  const { total, bySection, level } = useMemo(calculateScore, [scores, sections, t]);
 
   const handleScoreChange = (critId: number, lvl: ScoreLevel) => {
     setScores(prev => ({
@@ -154,7 +156,7 @@ export default function NewEvaluation() {
 
   const saveEvaluation = async (finalize: boolean) => {
     if (!formData.specialistId || !formData.clientName) {
-      toast({ variant: "destructive", title: "Completați câmpurile obligatorii", description: "Specialist și client sunt obligatorii." });
+      toast({ variant: "destructive", title: t.newEval.requiredFields, description: t.newEval.requiredDesc });
       return;
     }
 
@@ -169,7 +171,6 @@ export default function NewEvaluation() {
       let evaluationId: number;
 
       if (isEditMode && editId) {
-        // Edit mode: update existing draft directly
         await updateEvaluation.mutateAsync({
           id: editId,
           data: {
@@ -182,7 +183,6 @@ export default function NewEvaluation() {
         });
         evaluationId = editId;
       } else {
-        // Create mode: create then update with scores
         const evaluation = await createEvaluation.mutateAsync({
           data: {
             specialistId: parseInt(formData.specialistId),
@@ -202,31 +202,26 @@ export default function NewEvaluation() {
         }
       }
 
-      // Attach audio if provided
       if (audioFile) {
         try {
           const base64 = await fileToBase64(audioFile);
-          await attachAudio.mutateAsync({
-            id: evaluationId,
-            data: { audioUrl: base64 }
-          });
+          await attachAudio.mutateAsync({ id: evaluationId, data: { audioUrl: base64 } });
         } catch {
-          toast({ variant: "destructive", title: "Audio nu a putut fi atașat" });
+          toast({ variant: "destructive", title: t.newEval.audioError });
         }
       }
 
-      // Finalize if requested
       if (finalize) {
         await finalizeEvaluation.mutateAsync({ id: evaluationId });
-        toast({ title: "Evaluare finalizată" });
+        toast({ title: t.newEval.finalized });
       } else {
-        toast({ title: "Draft salvat" });
+        toast({ title: t.newEval.draftSaved });
       }
 
       await queryClient.invalidateQueries({ queryKey: getListEvaluationsQueryKey() });
       setLocation(`/evaluations/${evaluationId}`);
     } catch {
-      toast({ variant: "destructive", title: "Eroare la salvare", description: "Vă rugăm încercați din nou." });
+      toast({ variant: "destructive", title: t.newEval.saveError, description: t.newEval.saveErrorDesc });
     } finally {
       setIsSaving(false);
     }
@@ -235,6 +230,10 @@ export default function NewEvaluation() {
   if (isLoadingSpec || isLoadingSec || (isEditMode && isLoadingExisting)) {
     return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
+
+  const levelColor = level === t.newEval.excellent ? "bg-green-100 text-green-700"
+    : level === t.newEval.good ? "bg-orange-100 text-orange-700"
+    : "bg-red-100 text-red-700";
 
   return (
     <div className="space-y-6">
@@ -245,17 +244,17 @@ export default function NewEvaluation() {
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Părăsiți pagina?</AlertDialogTitle>
-              <AlertDialogDescription>Toate datele nesalvate vor fi pierdute.</AlertDialogDescription>
+              <AlertDialogTitle>{t.newEval.leaveTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{t.newEval.leaveDesc}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Anulare</AlertDialogCancel>
-              <AlertDialogAction onClick={() => setLocation("/evaluations")}>Părăsește</AlertDialogAction>
+              <AlertDialogCancel>{t.newEval.cancel}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => setLocation("/evaluations")}>{t.newEval.leave}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         <h2 className="text-3xl font-bold tracking-tight">
-          {isEditMode ? "Editează draft" : "Evaluare nouă"}
+          {isEditMode ? t.newEval.editTitle : t.newEval.title}
         </h2>
       </div>
 
@@ -263,44 +262,44 @@ export default function NewEvaluation() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Detalii apel / întâlnire</CardTitle>
+              <CardTitle>{t.newEval.details}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Specialist *</Label>
-                  <Select value={formData.specialistId} onValueChange={v => setFormData({...formData, specialistId: v})}>
-                    <SelectTrigger><SelectValue placeholder="Selectează specialist" /></SelectTrigger>
+                  <Label>{t.newEval.specialistLabel}</Label>
+                  <Select value={formData.specialistId} onValueChange={v => setFormData({ ...formData, specialistId: v })}>
+                    <SelectTrigger><SelectValue placeholder={t.newEval.selectSpecialist} /></SelectTrigger>
                     <SelectContent>
                       {specialists?.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.firstName} {s.lastName}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Client *</Label>
-                  <Input value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} placeholder="Nume client" />
+                  <Label>{t.newEval.clientLabel}</Label>
+                  <Input value={formData.clientName} onChange={e => setFormData({ ...formData, clientName: e.target.value })} placeholder={t.newEval.clientPlaceholder} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Data</Label>
-                  <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                  <Label>{t.newEval.dateLabel}</Label>
+                  <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Ora</Label>
-                  <Input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} />
+                  <Label>{t.newEval.timeLabel}</Label>
+                  <Input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Tip evaluare</Label>
-                  <Select value={formData.evaluationType} onValueChange={(v: "call" | "meeting" | "chat") => setFormData({...formData, evaluationType: v})}>
+                  <Label>{t.newEval.typeLabel}</Label>
+                  <Select value={formData.evaluationType} onValueChange={(v: "call" | "meeting" | "chat") => setFormData({ ...formData, evaluationType: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="call">Apel</SelectItem>
-                      <SelectItem value="meeting">Întâlnire</SelectItem>
-                      <SelectItem value="chat">Chat</SelectItem>
+                      <SelectItem value="call">{t.newEval.typeCall}</SelectItem>
+                      <SelectItem value="meeting">{t.newEval.typeMeeting}</SelectItem>
+                      <SelectItem value="chat">{t.newEval.typeChat}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Evaluator</Label>
+                  <Label>{t.newEval.evaluatorLabel}</Label>
                   <Input value={me?.username || ""} disabled />
                 </div>
               </div>
@@ -308,7 +307,7 @@ export default function NewEvaluation() {
           </Card>
 
           <div className="space-y-4">
-            <h3 className="text-xl font-semibold">Criterii de evaluare</h3>
+            <h3 className="text-xl font-semibold">{t.newEval.criteriaTitle}</h3>
             <Accordion type="multiple" className="w-full" defaultValue={sections?.map(s => s.id.toString())}>
               {sections?.map(section => (
                 <AccordionItem key={section.id} value={section.id.toString()} className="border bg-card rounded-lg px-4 mb-4">
@@ -325,39 +324,39 @@ export default function NewEvaluation() {
                       <div key={crit.id} className="space-y-3">
                         <div className="flex justify-between items-start">
                           <div className="font-medium max-w-[70%]">{crit.name}</div>
-                          <div className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">Pondere: {crit.weight}</div>
+                          <div className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">{t.newEval.weight}: {crit.weight}</div>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                          <Button 
+                          <Button
                             type="button"
-                            variant={scores[crit.id]?.level === "poor" ? "default" : "outline"} 
+                            variant={scores[crit.id]?.level === "poor" ? "default" : "outline"}
                             className={scores[crit.id]?.level === "poor" ? "bg-red-500 hover:bg-red-600" : ""}
                             onClick={() => handleScoreChange(crit.id, "poor")}
                             size="sm"
                           >
-                            <X className="mr-1 h-3 w-3" /> Slab (0%)
+                            <X className="mr-1 h-3 w-3" /> {t.newEval.levelPoor}
                           </Button>
-                          <Button 
+                          <Button
                             type="button"
                             variant={scores[crit.id]?.level === "medium" ? "default" : "outline"}
                             className={scores[crit.id]?.level === "medium" ? "bg-yellow-500 hover:bg-yellow-600" : ""}
                             onClick={() => handleScoreChange(crit.id, "medium")}
                             size="sm"
                           >
-                            <Minus className="mr-1 h-3 w-3" /> Mediu (60%)
+                            <Minus className="mr-1 h-3 w-3" /> {t.newEval.levelMedium}
                           </Button>
-                          <Button 
+                          <Button
                             type="button"
                             variant={scores[crit.id]?.level === "good" ? "default" : "outline"}
                             className={scores[crit.id]?.level === "good" ? "bg-green-500 hover:bg-green-600" : ""}
                             onClick={() => handleScoreChange(crit.id, "good")}
                             size="sm"
                           >
-                            <Check className="mr-1 h-3 w-3" /> Bun (100%)
+                            <Check className="mr-1 h-3 w-3" /> {t.newEval.levelGood}
                           </Button>
                         </div>
-                        <Textarea 
-                          placeholder="Observații (opțional)" 
+                        <Textarea
+                          placeholder={t.newEval.observations}
                           value={scores[crit.id]?.comment || ""}
                           onChange={e => handleCommentChange(crit.id, e.target.value)}
                           rows={2}
@@ -375,19 +374,15 @@ export default function NewEvaluation() {
           <div className="sticky top-6">
             <Card className="border-primary/20 shadow-md">
               <CardHeader className="bg-primary/5 pb-4">
-                <CardTitle>Scor evaluare</CardTitle>
+                <CardTitle>{t.newEval.scoreCard}</CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-sm text-muted-foreground uppercase font-semibold">Total</p>
+                    <p className="text-sm text-muted-foreground uppercase font-semibold">{t.newEval.total}</p>
                     <p className="text-5xl font-bold">{total}<span className="text-2xl text-muted-foreground">/100</span></p>
                   </div>
-                  <div className={`px-4 py-2 rounded-full font-bold text-sm ${
-                    level === "Excelent" ? "bg-green-100 text-green-700" : 
-                    level === "Bun" ? "bg-orange-100 text-orange-700" : 
-                    "bg-red-100 text-red-700"
-                  }`}>
+                  <div className={`px-4 py-2 rounded-full font-bold text-sm ${levelColor}`}>
                     {level}
                   </div>
                 </div>
@@ -403,41 +398,41 @@ export default function NewEvaluation() {
 
                 <div className="pt-4 border-t space-y-4">
                   <div>
-                    <Label className="mb-2 block">Atașează înregistrare (opțional)</Label>
-                    <input 
-                      type="file" 
-                      accept="audio/*" 
-                      className="hidden" 
+                    <Label className="mb-2 block">{t.newEval.audio}</Label>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
                       ref={fileInputRef}
                       onChange={handleAudioChange}
                     />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Upload className="mr-2 h-4 w-4" /> 
-                      {audioFile ? audioFile.name : "Selectează fișier audio"}
+                      <Upload className="mr-2 h-4 w-4" />
+                      {audioFile ? audioFile.name : t.newEval.selectAudio}
                     </Button>
                   </div>
-                  
+
                   <div className="flex flex-col gap-2 pt-4">
-                    <Button 
-                      onClick={() => saveEvaluation(true)} 
+                    <Button
+                      onClick={() => saveEvaluation(true)}
                       className="w-full"
                       disabled={isSaving}
                     >
                       {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Finalizează evaluarea
+                      {t.newEval.finalize}
                     </Button>
-                    <Button 
-                      onClick={() => saveEvaluation(false)} 
-                      variant="secondary" 
+                    <Button
+                      onClick={() => saveEvaluation(false)}
+                      variant="secondary"
                       className="w-full"
                       disabled={isSaving}
                     >
-                      {isEditMode ? "Salvează modificările" : "Salvează draft"}
+                      {isEditMode ? t.newEval.saveChanges : t.newEval.saveDraft}
                     </Button>
                   </div>
                 </div>

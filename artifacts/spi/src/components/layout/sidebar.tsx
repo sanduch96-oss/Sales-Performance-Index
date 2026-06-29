@@ -12,18 +12,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLogout } from "@workspace/api-client-react";
+import { useLanguage } from "@/contexts/language-context";
 
 export function Sidebar() {
   const [location] = useLocation();
   const logout = useLogout();
   const { data: user } = useGetMe();
+  const { t } = useLanguage();
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Specialiști", href: "/specialists", icon: Users },
-    { name: "Evaluări", href: "/evaluations", icon: ClipboardList },
-    { name: "Rapoarte", href: "/reports", icon: BarChart2 },
-    { name: "Setări", href: "/settings", icon: Settings },
+    { name: t.nav.dashboard, href: "/dashboard", icon: LayoutDashboard },
+    { name: t.nav.specialists, href: "/specialists", icon: Users },
+    { name: t.nav.evaluations, href: "/evaluations", icon: ClipboardList },
+    { name: t.nav.reports, href: "/reports", icon: BarChart2 },
+    { name: t.nav.settings, href: "/settings", icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -43,7 +45,7 @@ export function Sidebar() {
         {navigation.map((item) => {
           const isActive = location === item.href || location.startsWith(`${item.href}/`);
           return (
-            <Link key={item.name} href={item.href} className="block">
+            <Link key={item.href} href={item.href} className="block">
               <span
                 className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
@@ -69,7 +71,7 @@ export function Sidebar() {
           onClick={handleLogout}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Deconectare
+          {t.nav.logout}
         </Button>
       </div>
     </div>

@@ -10,17 +10,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Link } from "wouter";
-
-function getScoreBadge(score: number | null) {
-  if (score === null) return null;
-  if (score >= 80) return <Badge className="bg-green-500 hover:bg-green-600">Excelent</Badge>;
-  if (score >= 70) return <Badge className="bg-orange-500 hover:bg-orange-600">Bun</Badge>;
-  return <Badge variant="destructive">Slab</Badge>;
-}
+import { useLanguage } from "@/contexts/language-context";
 
 const MONTHLY_TARGET_KEY = "spi_monthly_eval_target";
 
 export default function Dashboard() {
+  const { t } = useLanguage();
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: trend, isLoading: isLoadingTrend } = useGetMonthlyTrend();
   const { data: recent, isLoading: isLoadingRecent } = useGetRecentEvaluations({ limit: 5 });
@@ -45,6 +40,13 @@ export default function Dashboard() {
   const { data: allEvaluations, isLoading: isLoadingAllEvals } = useListEvaluations({ dateFrom, dateTo });
   const { data: lowPerformers, isLoading: isLoadingLowPerformers } = useGetLowPerformers();
 
+  function getScoreBadge(score: number | null) {
+    if (score === null) return null;
+    if (score >= 80) return <Badge className="bg-green-500 hover:bg-green-600">{t.dashboard.score} ✓</Badge>;
+    if (score >= 70) return <Badge className="bg-orange-500 hover:bg-orange-600">{t.evaluations.good}</Badge>;
+    return <Badge variant="destructive">{t.evaluations.poor}</Badge>;
+  }
+
   if (isLoadingSummary || isLoadingTrend || isLoadingRecent) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -55,31 +57,31 @@ export default function Dashboard() {
 
   if (!summary) return null;
 
-  const scoreChange = summary.averageScoreLastMonth 
+  const scoreChange = summary.averageScoreLastMonth
     ? (summary.averageTeamScore ?? 0) - summary.averageScoreLastMonth
     : 0;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">Privire de ansamblu asupra performanței echipei.</p>
+        <h2 className="text-3xl font-bold tracking-tight">{t.dashboard.title}</h2>
+        <p className="text-muted-foreground">{t.dashboard.subtitle}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Scor mediu echipă</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.avgScore}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.averageTeamScore !== null ? `${summary.averageTeamScore}/100` : "N/A"}</div>
+            <div className="text-2xl font-bold">{summary.averageTeamScore !== null ? `${summary.averageTeamScore}/100` : t.common.na}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               {scoreChange > 0 ? (
-                <><TrendingUp className="mr-1 h-3 w-3 text-green-500" /> <span className="text-green-500">+{scoreChange.toFixed(1)} față de luna trecută</span></>
+                <><TrendingUp className="mr-1 h-3 w-3 text-green-500" /> <span className="text-green-500">+{scoreChange.toFixed(1)}</span></>
               ) : scoreChange < 0 ? (
-                <><TrendingDown className="mr-1 h-3 w-3 text-red-500" /> <span className="text-red-500">{scoreChange.toFixed(1)} față de luna trecută</span></>
+                <><TrendingDown className="mr-1 h-3 w-3 text-red-500" /> <span className="text-red-500">{scoreChange.toFixed(1)}</span></>
               ) : (
-                <><Minus className="mr-1 h-3 w-3" /> Fără schimbări</>
+                <><Minus className="mr-1 h-3 w-3" /> {t.dashboard.noChanges}</>
               )}
             </p>
           </CardContent>
@@ -87,7 +89,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total evaluări</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
             <div className="flex items-center gap-1">
               {isEditingTarget ? (
                 <div className="flex items-center gap-1">
@@ -131,7 +133,7 @@ export default function Dashboard() {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  title="Editează ținta lunară"
+                  title={t.dashboard.editTarget}
                   onClick={() => {
                     setTargetInput(String(monthlyTarget));
                     setIsEditingTarget(true);
@@ -148,16 +150,16 @@ export default function Dashboard() {
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Toate evaluările</DialogTitle>
+                    <DialogTitle>{t.dashboard.allEvals}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="flex gap-4">
                       <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">De când</Label>
+                        <Label className="text-xs text-muted-foreground">{t.dashboard.from}</Label>
                         <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">Până când</Label>
+                        <Label className="text-xs text-muted-foreground">{t.dashboard.to}</Label>
                         <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
                       </div>
                     </div>
@@ -178,7 +180,7 @@ export default function Dashboard() {
                           </div>
                         ))}
                         {!allEvaluations?.length && (
-                          <p className="text-center text-muted-foreground py-4">Nu există evaluări în intervalul selectat.</p>
+                          <p className="text-center text-muted-foreground py-4">{t.dashboard.noEvalsInterval}</p>
                         )}
                       </div>
                     )}
@@ -191,7 +193,7 @@ export default function Dashboard() {
             <div className="text-2xl font-bold">{summary.totalEvaluations}</div>
             <div className="mt-3 space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Progres lunar</span>
+                <span>{t.dashboard.monthlyProgress}</span>
                 <span>{summary.evaluationsThisMonth} / {monthlyTarget}</span>
               </div>
               <Progress
@@ -199,7 +201,7 @@ export default function Dashboard() {
                 className="h-2"
               />
               <p className="text-xs text-muted-foreground">
-                Țintă: {monthlyTarget} evaluări/lună
+                {t.dashboard.target}: {monthlyTarget} {t.dashboard.evalsPerMonth}
               </p>
             </div>
           </CardContent>
@@ -207,7 +209,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Etapa cea mai slabă</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.weakestSection}</CardTitle>
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-4 w-4">
@@ -216,14 +218,14 @@ export default function Dashboard() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Specialiști cu scor mediu &lt; 70</DialogTitle>
+                  <DialogTitle>{t.dashboard.lowPerformers}</DialogTitle>
                 </DialogHeader>
                 {isLoadingLowPerformers ? (
                   <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
                 ) : (
                   <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {lowPerformers?.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">Nu există specialiști sub performanță.</p>
+                      <p className="text-sm text-muted-foreground py-4 text-center">{t.dashboard.noLowPerformers}</p>
                     ) : lowPerformers?.map(specialist => (
                       <div key={specialist.id} className="flex justify-between items-center p-3 border rounded-lg">
                         <div>
@@ -241,21 +243,21 @@ export default function Dashboard() {
             </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold truncate">{summary.worstSection || "N/A"}</div>
+            <div className="text-xl font-bold truncate">{summary.worstSection || t.common.na}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {summary.worstSectionScore !== null && summary.worstSectionScore !== undefined ? `${summary.worstSectionScore}% mediu` : ""}
+              {summary.worstSectionScore !== null && summary.worstSectionScore !== undefined ? `${summary.worstSectionScore}% ${t.evalDetail.average}` : ""}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Etapa cea mai bună</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.bestSection}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold truncate">{summary.bestSection || "N/A"}</div>
+            <div className="text-xl font-bold truncate">{summary.bestSection || t.common.na}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {summary.bestSectionScore !== null && summary.bestSectionScore !== undefined ? `${summary.bestSectionScore}% mediu` : ""}
+              {summary.bestSectionScore !== null && summary.bestSectionScore !== undefined ? `${summary.bestSectionScore}% ${t.evalDetail.average}` : ""}
             </p>
           </CardContent>
         </Card>
@@ -265,14 +267,14 @@ export default function Dashboard() {
         <div className="col-span-4 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Performanța pe compartimente</CardTitle>
+              <CardTitle>{t.dashboard.sectionPerformance}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {summary.sectionScores.map(section => (
                 <div key={section.sectionId} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span>{section.sectionName}</span>
-                    <span className="font-medium">{section.averageScore !== null ? `${section.averageScore}%` : "N/A"}</span>
+                    <span className="font-medium">{section.averageScore !== null ? `${section.averageScore}%` : t.common.na}</span>
                   </div>
                   <Progress value={section.averageScore || 0} className="h-2" />
                 </div>
@@ -283,10 +285,10 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <CardTitle>Evoluție lunară</CardTitle>
+                <CardTitle>{t.dashboard.monthlyTrend}</CardTitle>
                 <div className="flex items-center gap-2 text-sm">
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-muted-foreground">De la</Label>
+                    <Label className="text-xs text-muted-foreground">{t.dashboard.trendFrom}</Label>
                     <input
                       type="month"
                       className="px-2 py-1 border rounded-md text-sm bg-background"
@@ -296,7 +298,7 @@ export default function Dashboard() {
                   </div>
                   <span className="text-muted-foreground mt-4">—</span>
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-muted-foreground">Până la</Label>
+                    <Label className="text-xs text-muted-foreground">{t.dashboard.trendTo}</Label>
                     <input
                       type="month"
                       className="px-2 py-1 border rounded-md text-sm bg-background"
@@ -321,11 +323,11 @@ export default function Dashboard() {
                       <XAxis dataKey="month" tickLine={false} axisLine={false} />
                       <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
                       <Tooltip />
-                      <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Scor Mediu" />
+                      <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name={t.reports.avgScore} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Nu există date în intervalul selectat.</div>
+                  <div className="flex h-full items-center justify-center text-muted-foreground text-sm">{t.dashboard.noDataInterval}</div>
                 );
               })()}
             </CardContent>
@@ -335,8 +337,8 @@ export default function Dashboard() {
         <div className="col-span-3">
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Evaluări recente</CardTitle>
-              <CardDescription>Ultimele {recent?.length || 0} evaluări adăugate.</CardDescription>
+              <CardTitle>{t.dashboard.recentEvals}</CardTitle>
+              <CardDescription>{t.dashboard.recentDesc} {recent?.length || 0} {t.dashboard.recentDesc2}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {recent?.map(evalItem => (
@@ -351,13 +353,13 @@ export default function Dashboard() {
                     {getScoreBadge(evalItem.totalScore)}
                   </div>
                   <div className="flex justify-between items-center mt-2 pt-2 border-t text-sm">
-                    <span className="text-muted-foreground">Scor:</span>
-                    <span className="font-bold">{evalItem.totalScore !== null ? `${evalItem.totalScore}/100` : "În progres"}</span>
+                    <span className="text-muted-foreground">{t.dashboard.score}:</span>
+                    <span className="font-bold">{evalItem.totalScore !== null ? `${evalItem.totalScore}/100` : "-"}</span>
                   </div>
                 </div>
               ))}
               {!recent?.length && (
-                <div className="text-center text-muted-foreground py-8">Nu există evaluări recente.</div>
+                <div className="text-center text-muted-foreground py-8">{t.dashboard.noRecent}</div>
               )}
             </CardContent>
           </Card>

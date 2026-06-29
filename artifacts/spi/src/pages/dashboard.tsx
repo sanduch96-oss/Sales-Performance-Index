@@ -35,6 +35,13 @@ export default function Dashboard() {
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState("");
 
+  const now = new Date();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const toYearMonth = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  const [trendFrom, setTrendFrom] = useState(toYearMonth(sixMonthsAgo));
+  const [trendTo, setTrendTo] = useState(toYearMonth(now));
+
   const { data: allEvaluations, isLoading: isLoadingAllEvals } = useListEvaluations({ dateFrom, dateTo });
   const { data: lowPerformers, isLoading: isLoadingLowPerformers } = useGetLowPerformers();
 
@@ -51,10 +58,6 @@ export default function Dashboard() {
   const scoreChange = summary.averageScoreLastMonth 
     ? (summary.averageTeamScore ?? 0) - summary.averageScoreLastMonth
     : 0;
-
-  const evalsGrowth = summary.evaluationsLastMonth > 0
-    ? Math.round(((summary.evaluationsThisMonth - summary.evaluationsLastMonth) / summary.evaluationsLastMonth) * 100)
-    : 100;
 
   return (
     <div className="space-y-6">
@@ -186,15 +189,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalEvaluations}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              {evalsGrowth > 0 ? (
-                 <><TrendingUp className="mr-1 h-3 w-3 text-green-500" /> <span className="text-green-500">+{evalsGrowth}% luna aceasta</span></>
-              ) : evalsGrowth < 0 ? (
-                 <><TrendingDown className="mr-1 h-3 w-3 text-red-500" /> <span className="text-red-500">{evalsGrowth}% luna aceasta</span></>
-              ) : (
-                <><Minus className="mr-1 h-3 w-3" /> Fără schimbări</>
-              )}
-            </p>
             <div className="mt-3 space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Progres lunar</span>
@@ -288,22 +282,52 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Evoluție lunară</CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle>Evoluție lunară</CardTitle>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs text-muted-foreground">De la</Label>
+                    <input
+                      type="month"
+                      className="px-2 py-1 border rounded-md text-sm bg-background"
+                      value={trendFrom}
+                      onChange={e => setTrendFrom(e.target.value)}
+                    />
+                  </div>
+                  <span className="text-muted-foreground mt-4">—</span>
+                  <div className="space-y-0.5">
+                    <Label className="text-xs text-muted-foreground">Până la</Label>
+                    <input
+                      type="month"
+                      className="px-2 py-1 border rounded-md text-sm bg-background"
+                      value={trendTo}
+                      onChange={e => setTrendTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="h-[300px]">
-              {trend && trend.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Scor Mediu" />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Nu există date suficiente.</div>
-              )}
+              {(() => {
+                const filtered = (trend ?? []).filter(p => {
+                  if (trendFrom && p.month < trendFrom) return false;
+                  if (trendTo && p.month > trendTo) return false;
+                  return true;
+                });
+                return filtered.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={filtered} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Scor Mediu" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Nu există date în intervalul selectat.</div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>

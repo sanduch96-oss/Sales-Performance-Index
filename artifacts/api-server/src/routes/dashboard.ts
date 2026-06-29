@@ -116,7 +116,7 @@ router.get("/dashboard/monthly-trend", requireAuth, async (_req, res): Promise<v
       COUNT(e.id) as count
     FROM evaluations e
     WHERE e.status = 'finalized'
-      AND e.date::date >= DATE_TRUNC('month', NOW()) - INTERVAL '5 months'
+      AND e.date::date >= DATE_TRUNC('month', NOW()) - INTERVAL '23 months'
     GROUP BY DATE_TRUNC('month', e.date::date)
     ORDER BY DATE_TRUNC('month', e.date::date)
   `);

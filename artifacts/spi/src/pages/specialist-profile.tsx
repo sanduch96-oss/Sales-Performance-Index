@@ -1,26 +1,39 @@
 import { useParams, Link } from "wouter";
+import { useState } from "react";
 import { 
   useGetSpecialist, 
   useGetSpecialistStats, 
   useListEvaluations,
+  useUpdateSpecialist,
   getGetSpecialistQueryKey,
   getGetSpecialistStatsQueryKey
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronRight, ClipboardList } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, ArrowLeft, ChevronRight, ClipboardList, Target } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { useLanguage } from "@/contexts/language-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SpecialistProfile() {
   const { id } = useParams();
   const specialistId = parseInt(id || "0");
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: specialist, isLoading: isLoadingSpec } = useGetSpecialist(specialistId, { query: { enabled: !!specialistId, queryKey: getGetSpecialistQueryKey(specialistId) } });
   const { data: stats, isLoading: isLoadingStats } = useGetSpecialistStats(specialistId, { query: { enabled: !!specialistId, queryKey: getGetSpecialistStatsQueryKey(specialistId) } });
   const { data: evaluations, isLoading: isLoadingEvals } = useListEvaluations({ specialistId });
+  const updateSpecialist = useUpdateSpecialist();
+
+  const [isTargetDialogOpen, setIsTargetDialogOpen] = useState(false);
+  const [targetValue, setTargetValue] = useState("");
 
   function getScoreBadge(score: number | null) {
     if (score === null) return null;
@@ -48,6 +61,16 @@ export default function SpecialistProfile() {
           <p className="text-muted-foreground">{specialist.position} • {specialist.department}</p>
         </div>
         <div className="ml-auto flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setTargetValue(specialist.monthlyTarget != null ? String(specialist.monthlyTarget) : "");
+              setIsTargetDialogOpen(true);
+            }}
+          >
+            <Target className="mr-2 h-4 w-4" />
+            {t.specialists.monthlyTarget}{specialist.monthlyTarget != null ? `: ${specialist.monthlyTarget}` : ""}
+          </Button>
           <Link href={`/evaluations/new?specialistId=${specialistId}`}>
             <Button>
               <ClipboardList className="mr-2 h-4 w-4" /> {t.profile.evaluate}
@@ -174,6 +197,46 @@ export default function SpecialistProfile() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={isTargetDialogOpen} onOpenChange={setIsTargetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.dashboard.setTarget}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>{t.specialists.monthlyTarget}</Label>
+            <Input
+              type="number"
+              min={0}
+              value={targetValue}
+              onChange={e => setTargetValue(e.target.value)}
+              placeholder="ex: 20"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTargetDialogOpen(false)}>{t.newEval.cancel}</Button>
+            <Button
+              disabled={updateSpecialist.isPending}
+              onClick={async () => {
+                const val = targetValue === "" ? null : parseInt(targetValue);
+                try {
+                  await updateSpecialist.mutateAsync({
+                    id: specialistId,
+                    data: { monthlyTarget: val } as any,
+                  });
+                  await queryClient.invalidateQueries({ queryKey: getGetSpecialistQueryKey(specialistId) });
+                  toast({ title: t.common.save });
+                  setIsTargetDialogOpen(false);
+                } catch {
+                  toast({ variant: "destructive", title: t.newEval.saveError });
+                }
+              }}
+            >
+              {updateSpecialist.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t.common.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

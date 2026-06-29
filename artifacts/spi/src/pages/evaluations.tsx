@@ -1,4 +1,4 @@
-import { useListEvaluations, useDeleteEvaluation, getListEvaluationsQueryKey } from "@workspace/api-client-react";
+import { useListEvaluations, useDeleteEvaluation, getListEvaluationsQueryKey, useGetMe } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,8 @@ export default function Evaluations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const { data: user } = useGetMe();
+  const isSpecialist = user?.role === "user";
   const { data: evaluations, isLoading } = useListEvaluations();
   const deleteEvaluation = useDeleteEvaluation();
 
@@ -49,9 +51,11 @@ export default function Evaluations() {
           <h2 className="text-3xl font-bold tracking-tight">{t.evaluations.title}</h2>
           <p className="text-muted-foreground">{t.evaluations.subtitle}</p>
         </div>
-        <Link href="/evaluations/new">
-          <Button><Plus className="mr-2 h-4 w-4" /> {t.evaluations.new}</Button>
-        </Link>
+        {!isSpecialist && (
+          <Link href="/evaluations/new">
+            <Button><Plus className="mr-2 h-4 w-4" /> {t.evaluations.new}</Button>
+          </Link>
+        )}
       </div>
 
       <Card>
@@ -124,7 +128,7 @@ export default function Evaluations() {
                           <Link href={`/evaluations/${ev.id}`}>
                             <Button variant="ghost" size="sm">{t.evaluations.view}</Button>
                           </Link>
-                          {ev.status === "draft" && (
+                          {ev.status === "draft" && !isSpecialist && (
                             <>
                               <Button
                                 variant="ghost"

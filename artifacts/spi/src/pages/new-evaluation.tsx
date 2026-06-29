@@ -44,6 +44,14 @@ export default function NewEvaluation() {
   const isEditMode = editId !== null && !isNaN(editId);
 
   const { data: me } = useGetMe();
+
+  // Redirect specialists away from this page
+  useEffect(() => {
+    if (me && me.role === "user") {
+      setLocation("/evaluations");
+    }
+  }, [me, setLocation]);
+
   const { data: specialists, isLoading: isLoadingSpec } = useListSpecialists({ archived: false });
   const { data: sections, isLoading: isLoadingSec } = useListCriteriaSections();
   const { data: existingEval, isLoading: isLoadingExisting } = useGetEvaluation(editId ?? 0, {

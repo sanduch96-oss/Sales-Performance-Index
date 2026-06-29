@@ -76,6 +76,17 @@ export function LocalizedDatePicker({ value, onChange, className, placeholder }:
           endMonth={new Date(2030, 11)}
           defaultMonth={selected ?? new Date()}
           initialFocus
+          formatters={{
+            formatMonthDropdown: (date) =>
+              date.toLocaleString(loc.intl, { month: "long" }),
+          }}
+          classNames={{
+            dropdown_root: [
+              "has-focus:border-ring border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px]",
+              "relative rounded-md border",
+              "min-w-[7rem]",
+            ].join(" "),
+          }}
         />
       </PopoverContent>
     </Popover>

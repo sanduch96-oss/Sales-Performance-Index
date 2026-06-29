@@ -24,6 +24,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/language-context";
+import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
 
 type ScoreLevel = "good" | "medium" | "poor";
 
@@ -281,7 +282,7 @@ export default function NewEvaluation() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t.newEval.dateLabel}</Label>
-                  <Input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                  <LocalizedDatePicker value={formData.date} onChange={v => setFormData({ ...formData, date: v })} className="w-full" />
                 </div>
                 <div className="space-y-2">
                   <Label>{t.newEval.timeLabel}</Label>

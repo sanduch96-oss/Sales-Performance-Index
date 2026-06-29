@@ -18,6 +18,7 @@ import { Loader2, Plus, Archive, Trash2, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/contexts/language-context";
+import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
 
 export default function Specialists() {
   const queryClient = useQueryClient();
@@ -183,7 +184,7 @@ export default function Specialists() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hireDate">{t.profile.date}</Label>
-                  <Input type="date" id="hireDate" value={formData.hireDate} onChange={e => setFormData({ ...formData, hireDate: e.target.value })} required />
+                  <LocalizedDatePicker value={formData.hireDate} onChange={v => setFormData({ ...formData, hireDate: v })} className="w-full" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="manager">Manager</Label>

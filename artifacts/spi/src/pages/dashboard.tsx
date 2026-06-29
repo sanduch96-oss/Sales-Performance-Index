@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
+import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
 
 const MONTHLY_TARGET_KEY = "spi_monthly_eval_target";
 
@@ -156,11 +157,11 @@ export default function Dashboard() {
                     <div className="flex gap-4">
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">{t.dashboard.from}</Label>
-                        <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                        <LocalizedDatePicker value={dateFrom} onChange={setDateFrom} className="w-full" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs text-muted-foreground">{t.dashboard.to}</Label>
-                        <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                        <LocalizedDatePicker value={dateTo} onChange={setDateTo} className="w-full" />
                       </div>
                     </div>
                     {isLoadingAllEvals ? (

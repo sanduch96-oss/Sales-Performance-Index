@@ -19,6 +19,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 import { useLanguage } from "@/contexts/language-context";
+import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
 
 function ScoreBadge({ score, t }: { score: number | null; t: { excellent: string; good: string; poor: string } }) {
   if (score === null) return <span className="text-muted-foreground">—</span>;
@@ -171,21 +172,11 @@ export default function Reports() {
             <div className="flex flex-wrap gap-4 items-end pb-4 border-b">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t.reports.from}</Label>
-                <input
-                  type="date"
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
-                  value={teamFrom}
-                  onChange={e => { setTeamFrom(e.target.value); setTeamGenerated(false); }}
-                />
+                <LocalizedDatePicker value={teamFrom} onChange={v => { setTeamFrom(v); setTeamGenerated(false); }} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t.reports.to}</Label>
-                <input
-                  type="date"
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
-                  value={teamTo}
-                  onChange={e => { setTeamTo(e.target.value); setTeamGenerated(false); }}
-                />
+                <LocalizedDatePicker value={teamTo} onChange={v => { setTeamTo(v); setTeamGenerated(false); }} />
               </div>
               <Button onClick={handleTeamGenerate} className="gap-2">
                 <BarChart2 className="h-4 w-4" /> {t.reports.generate}
@@ -332,21 +323,11 @@ export default function Reports() {
             <div className="flex flex-wrap gap-4 items-end pb-4 border-b">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t.reports.from}</Label>
-                <input
-                  type="date"
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
-                  value={indivFrom}
-                  onChange={e => { setIndivFrom(e.target.value); setIndivGenerated(false); }}
-                />
+                <LocalizedDatePicker value={indivFrom} onChange={v => { setIndivFrom(v); setIndivGenerated(false); }} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t.reports.to}</Label>
-                <input
-                  type="date"
-                  className="px-3 py-2 border rounded-md text-sm bg-background"
-                  value={indivTo}
-                  onChange={e => { setIndivTo(e.target.value); setIndivGenerated(false); }}
-                />
+                <LocalizedDatePicker value={indivTo} onChange={v => { setIndivTo(v); setIndivGenerated(false); }} />
               </div>
               <div className="space-y-1.5 min-w-[200px]">
                 <Label className="text-xs text-muted-foreground">{t.reports.specialist}</Label>

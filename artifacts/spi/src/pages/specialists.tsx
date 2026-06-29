@@ -5,7 +5,6 @@ import {
   useCreateSpecialist, 
   useArchiveSpecialist, 
   useDeleteSpecialist,
-  getListSpecialistsQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -42,16 +41,24 @@ export default function Specialists() {
     status: "active" as "active" | "inactive"
   });
 
+  const invalidateSpecialists = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/specialists"] });
+  };
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    createSpecialist.mutate({ data: formData }, {
+    const dataToSend = {
+      ...formData,
+      manager: formData.manager || undefined,
+    };
+    createSpecialist.mutate({ data: dataToSend }, {
       onSuccess: () => {
         toast({ title: "Specialist adăugat cu succes" });
         setIsAddDialogOpen(false);
-        queryClient.invalidateQueries({ queryKey: getListSpecialistsQueryKey({ archived: false }) });
+        invalidateSpecialists();
         setFormData({ firstName: "", lastName: "", position: "", department: "", hireDate: new Date().toISOString().split('T')[0], manager: "", status: "active" });
       },
-      onError: () => toast({ variant: "destructive", title: "Eroare la adăugare" })
+      onError: () => toast({ variant: "destructive", title: "Eroare la adăugare. Verificați câmpurile completate." })
     });
   };
 
@@ -59,9 +66,9 @@ export default function Specialists() {
     archiveSpecialist.mutate({ id, data: { archived } }, {
       onSuccess: () => {
         toast({ title: archived ? "Specialist arhivat" : "Specialist dezarhivat" });
-        queryClient.invalidateQueries({ queryKey: getListSpecialistsQueryKey({ archived: false }) });
-        queryClient.invalidateQueries({ queryKey: getListSpecialistsQueryKey({ archived: true }) });
-      }
+        invalidateSpecialists();
+      },
+      onError: () => toast({ variant: "destructive", title: "Eroare la arhivare" })
     });
   };
 
@@ -69,9 +76,9 @@ export default function Specialists() {
     deleteSpecialist.mutate({ id }, {
       onSuccess: () => {
         toast({ title: "Specialist șters definitiv" });
-        queryClient.invalidateQueries({ queryKey: getListSpecialistsQueryKey({ archived: false }) });
-        queryClient.invalidateQueries({ queryKey: getListSpecialistsQueryKey({ archived: true }) });
-      }
+        invalidateSpecialists();
+      },
+      onError: () => toast({ variant: "destructive", title: "Eroare la ștergere" })
     });
   };
 

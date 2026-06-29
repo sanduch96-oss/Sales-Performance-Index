@@ -124,7 +124,7 @@ router.get("/specialists/:id", requireAuth, async (req, res): Promise<void> => {
       .from(evaluationsTable)
       .where(and(eq(evaluationsTable.specialistId, s.id), eq(evaluationsTable.status, "finalized"))),
     db
-      .select({ username: usersTable.username })
+      .select({ username: usersTable.username, lastPlainPassword: usersTable.lastPlainPassword })
       .from(usersTable)
       .where(eq(usersTable.specialistId, s.id)),
   ]);
@@ -144,6 +144,7 @@ router.get("/specialists/:id", requireAuth, async (req, res): Promise<void> => {
     monthlyTarget: s.monthlyTarget ?? null,
     createdAt: s.createdAt.toISOString(),
     linkedUsername: linkedUser?.username ?? null,
+    linkedPassword: linkedUser?.lastPlainPassword ?? null,
   });
 });
 
@@ -378,7 +379,7 @@ router.post("/specialists/:id/generate-credentials", requireAuth, async (req, re
   if (existing) {
     // Reset credentials for existing user
     username = existing.username;
-    await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, existing.id));
+    await db.update(usersTable).set({ passwordHash, lastPlainPassword: password }).where(eq(usersTable.id, existing.id));
   } else {
     // Find unique username
     username = base;
@@ -388,7 +389,7 @@ router.post("/specialists/:id/generate-credentials", requireAuth, async (req, re
       if (!taken) break;
       username = `${base}${suffix++}`;
     }
-    await db.insert(usersTable).values({ username, passwordHash, role: "user", specialistId: id });
+    await db.insert(usersTable).values({ username, passwordHash, lastPlainPassword: password, role: "user", specialistId: id });
   }
 
   res.json({ username, password });

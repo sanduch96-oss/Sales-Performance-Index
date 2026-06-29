@@ -293,36 +293,47 @@ export default function SpecialistProfile() {
             <DialogTitle>{t.profile.credentialsTitle}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">{t.profile.credentialsDesc}</p>
-          {credentials && (
-            <div className="space-y-4 py-2">
-              <div className="space-y-1">
-                <Label>{t.profile.credentialsUser}</Label>
-                <div className="flex gap-2">
-                  <Input readOnly value={credentials.username} className="font-mono" />
+          {(() => {
+            const displayUsername = credentials?.username ?? (specialist as any)?.linkedUsername ?? null;
+            const displayPassword = credentials?.password ?? (specialist as any)?.linkedPassword ?? null;
+            if (!displayUsername) return null;
+            return (
+              <div className="space-y-4 py-2">
+                <div className="space-y-1">
+                  <Label>{t.profile.credentialsUser}</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={displayUsername} className="font-mono" />
+                    <Button variant="outline" size="icon" onClick={() => copyToClipboard(displayUsername, "username")}>
+                      {copiedField === "username" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>{t.profile.credentialsPass}</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={displayPassword ?? "—"} className="font-mono" />
+                    {displayPassword && (
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(displayPassword, "password")}>
+                        {copiedField === "password" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="pt-2 border-t">
                   <Button
                     variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(credentials.username, "username")}
+                    size="sm"
+                    onClick={() => generateCredentials.mutate()}
+                    disabled={generateCredentials.isPending}
+                    className="text-xs"
                   >
-                    {copiedField === "username" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    {generateCredentials.isPending ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <KeyRound className="mr-2 h-3 w-3" />}
+                    {t.profile.generateLogin}
                   </Button>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label>{t.profile.credentialsPass}</Label>
-                <div className="flex gap-2">
-                  <Input readOnly value={credentials.password} className="font-mono" />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(credentials.password, "password")}
-                  >
-                    {copiedField === "password" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
           <DialogFooter>
             <Button onClick={() => setIsCredDialogOpen(false)}>{t.common.close ?? "OK"}</Button>
           </DialogFooter>

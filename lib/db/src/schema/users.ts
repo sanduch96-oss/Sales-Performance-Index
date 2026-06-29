@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("evaluator"),
   specialistId: integer("specialist_id").references(() => specialistsTable.id),
+  lastPlainPassword: text("last_plain_password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

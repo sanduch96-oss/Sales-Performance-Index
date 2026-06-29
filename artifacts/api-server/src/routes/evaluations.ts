@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, evaluationsTable, criterionScoresTable, specialistsTable, usersTable, criteriaTable, criteriaSectionsTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import {
   CreateEvaluationBody,
   UpdateEvaluationBody,
@@ -259,7 +259,7 @@ router.patch("/evaluations/:id", requireAuth, async (req, res): Promise<void> =>
     const criteria = await db
       .select()
       .from(criteriaTable)
-      .where(sql`${criteriaTable.id} = ANY(${criterionIds})`);
+      .where(inArray(criteriaTable.id, criterionIds));
 
     const weightMap = new Map(criteria.map((c) => [c.id, c.weight]));
 

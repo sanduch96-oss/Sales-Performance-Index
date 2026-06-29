@@ -24,8 +24,10 @@ import type {
   AudioAttachment,
   AuthResponse,
   CriteriaSection,
+  CriteriaSectionCreate,
   CriteriaSectionUpdate,
   Criterion,
+  CriterionCreate,
   CriterionUpdate,
   DashboardSummary,
   Evaluation,
@@ -1547,6 +1549,76 @@ export function useListCriteriaSections<TData = Awaited<ReturnType<typeof listCr
 
 
 
+export const getCreateCriteriaSectionUrl = () => {
+
+
+
+
+  return `/api/criteria-sections`
+}
+
+/**
+ * @summary Create a new criteria section
+ */
+export const createCriteriaSection = async (criteriaSectionCreate: CriteriaSectionCreate, options?: RequestInit): Promise<CriteriaSection> => {
+
+  return customFetch<CriteriaSection>(getCreateCriteriaSectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(criteriaSectionCreate)
+  }
+);}
+
+
+
+
+export const getCreateCriteriaSectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCriteriaSection>>, TError,{data: BodyType<CriteriaSectionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCriteriaSection>>, TError,{data: BodyType<CriteriaSectionCreate>}, TContext> => {
+
+const mutationKey = ['createCriteriaSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCriteriaSection>>, {data: BodyType<CriteriaSectionCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCriteriaSection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCriteriaSectionMutationResult = NonNullable<Awaited<ReturnType<typeof createCriteriaSection>>>
+    export type CreateCriteriaSectionMutationBody = BodyType<CriteriaSectionCreate>
+    export type CreateCriteriaSectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new criteria section
+ */
+export const useCreateCriteriaSection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCriteriaSection>>, TError,{data: BodyType<CriteriaSectionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCriteriaSection>>,
+        TError,
+        {data: BodyType<CriteriaSectionCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateCriteriaSectionMutationOptions(options));
+    }
+
 export const getUpdateCriteriaSectionUrl = (id: number,) => {
 
 
@@ -1618,6 +1690,146 @@ export const useUpdateCriteriaSection = <TError = ErrorType<unknown>,
       return useMutation(getUpdateCriteriaSectionMutationOptions(options));
     }
 
+export const getDeleteCriteriaSectionUrl = (id: number,) => {
+
+
+
+
+  return `/api/criteria-sections/${id}`
+}
+
+/**
+ * @summary Delete a criteria section and its criteria
+ */
+export const deleteCriteriaSection = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCriteriaSectionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCriteriaSectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCriteriaSection>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCriteriaSection>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCriteriaSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCriteriaSection>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCriteriaSection(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCriteriaSectionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCriteriaSection>>>
+
+    export type DeleteCriteriaSectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a criteria section and its criteria
+ */
+export const useDeleteCriteriaSection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCriteriaSection>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCriteriaSection>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCriteriaSectionMutationOptions(options));
+    }
+
+export const getCreateCriterionUrl = () => {
+
+
+
+
+  return `/api/criteria`
+}
+
+/**
+ * @summary Create a new criterion in a section
+ */
+export const createCriterion = async (criterionCreate: CriterionCreate, options?: RequestInit): Promise<Criterion> => {
+
+  return customFetch<Criterion>(getCreateCriterionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(criterionCreate)
+  }
+);}
+
+
+
+
+export const getCreateCriterionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCriterion>>, TError,{data: BodyType<CriterionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCriterion>>, TError,{data: BodyType<CriterionCreate>}, TContext> => {
+
+const mutationKey = ['createCriterion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCriterion>>, {data: BodyType<CriterionCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCriterion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCriterionMutationResult = NonNullable<Awaited<ReturnType<typeof createCriterion>>>
+    export type CreateCriterionMutationBody = BodyType<CriterionCreate>
+    export type CreateCriterionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new criterion in a section
+ */
+export const useCreateCriterion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCriterion>>, TError,{data: BodyType<CriterionCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCriterion>>,
+        TError,
+        {data: BodyType<CriterionCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateCriterionMutationOptions(options));
+    }
+
 export const getUpdateCriterionUrl = (id: number,) => {
 
 
@@ -1687,6 +1899,76 @@ export const useUpdateCriterion = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateCriterionMutationOptions(options));
+    }
+
+export const getDeleteCriterionUrl = (id: number,) => {
+
+
+
+
+  return `/api/criteria/${id}`
+}
+
+/**
+ * @summary Delete a criterion
+ */
+export const deleteCriterion = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCriterionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCriterionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCriterion>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCriterion>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCriterion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCriterion>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCriterion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCriterionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCriterion>>>
+
+    export type DeleteCriterionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a criterion
+ */
+export const useDeleteCriterion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCriterion>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCriterion>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCriterionMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

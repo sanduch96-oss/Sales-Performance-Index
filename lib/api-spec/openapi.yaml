@@ -408,6 +408,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CriteriaSection"
+    post:
+      operationId: createCriteriaSection
+      tags: [criteria]
+      summary: Create a new criteria section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriteriaSectionCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaSection"
 
   /criteria-sections/{id}:
     patch:
@@ -433,6 +450,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CriteriaSection"
+    delete:
+      operationId: deleteCriteriaSection
+      tags: [criteria]
+      summary: Delete a criteria section and its criteria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /criteria:
+    post:
+      operationId: createCriterion
+      tags: [criteria]
+      summary: Create a new criterion in a section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriterionCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Criterion"
 
   /criteria/{id}:
     patch:
@@ -458,6 +507,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Criterion"
+    delete:
+      operationId: deleteCriterion
+      tags: [criteria]
+      summary: Delete a criterion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   # Dashboard
   /dashboard/summary:
@@ -842,11 +904,29 @@ components:
           items:
             $ref: "#/components/schemas/Criterion"
 
+    CriteriaSectionCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
     CriteriaSectionUpdate:
       type: object
       properties:
         name:
           type: string
+
+    CriterionCreate:
+      type: object
+      required: [sectionId, name, weight]
+      properties:
+        sectionId:
+          type: integer
+        name:
+          type: string
+        weight:
+          type: number
 
     Criterion:
       type: object

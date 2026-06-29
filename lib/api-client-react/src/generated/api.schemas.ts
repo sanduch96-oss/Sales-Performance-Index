@@ -291,8 +291,18 @@ export interface CriteriaSection {
   criteria: Criterion[];
 }
 
+export interface CriteriaSectionCreate {
+  name: string;
+}
+
 export interface CriteriaSectionUpdate {
   name?: string;
+}
+
+export interface CriterionCreate {
+  sectionId: number;
+  name: string;
+  weight: number;
 }
 
 export interface CriterionUpdate {

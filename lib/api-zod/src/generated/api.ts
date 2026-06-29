@@ -491,6 +491,26 @@ export const ListCriteriaSectionsResponse = zod.array(ListCriteriaSectionsRespon
 
 
 /**
+ * @summary Create a new criteria section
+ */
+export const CreateCriteriaSectionBody = zod.object({
+  "name": zod.string()
+})
+
+export const CreateCriteriaSectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "totalWeight": zod.number(),
+  "criteria": zod.array(zod.object({
+  "id": zod.number(),
+  "sectionId": zod.number(),
+  "name": zod.string(),
+  "weight": zod.number()
+}))
+})
+
+
+/**
  * @summary Update a criteria section
  */
 export const UpdateCriteriaSectionParams = zod.object({
@@ -515,6 +535,33 @@ export const UpdateCriteriaSectionResponse = zod.object({
 
 
 /**
+ * @summary Delete a criteria section and its criteria
+ */
+export const DeleteCriteriaSectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCriteriaSectionResponse = zod.void()
+
+
+/**
+ * @summary Create a new criterion in a section
+ */
+export const CreateCriterionBody = zod.object({
+  "sectionId": zod.number(),
+  "name": zod.string(),
+  "weight": zod.number()
+})
+
+export const CreateCriterionResponse = zod.object({
+  "id": zod.number(),
+  "sectionId": zod.number(),
+  "name": zod.string(),
+  "weight": zod.number()
+})
+
+
+/**
  * @summary Update a criterion weight or name
  */
 export const UpdateCriterionParams = zod.object({
@@ -532,6 +579,16 @@ export const UpdateCriterionResponse = zod.object({
   "name": zod.string(),
   "weight": zod.number()
 })
+
+
+/**
+ * @summary Delete a criterion
+ */
+export const DeleteCriterionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCriterionResponse = zod.void()
 
 
 /**

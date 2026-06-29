@@ -44,7 +44,7 @@ export default function Register() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
-            <img src="/logo.png" alt="SPI Logo" className="h-32 w-auto" />
+            <img src="/logo.png" alt="SPI Logo" className="h-44 w-auto" />
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>

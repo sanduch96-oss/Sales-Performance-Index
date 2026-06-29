@@ -4,3 +4,4 @@ export * from "./criteria";
 export * from "./evaluations";
 export * from "./tasks";
 export * from "./notifications";
+export * from "./evaluation-comments";

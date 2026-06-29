@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,6 +9,7 @@ import {
 import { useLanguage } from "@/contexts/language-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
+import { Link } from "wouter";
 
 interface Notification {
   id: number;
@@ -64,7 +65,7 @@ export function NotificationsBell() {
             </Button>
           )}
         </div>
-        <div className="max-h-80 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto">
           {notifications.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-8">
               {t.notifications.empty}
@@ -73,9 +74,7 @@ export function NotificationsBell() {
             notifications.map((n) => (
               <div
                 key={n.id}
-                className={`px-4 py-3 border-b last:border-0 ${
-                  !n.read ? "bg-primary/5" : ""
-                }`}
+                className={`px-4 py-3 border-b last:border-0 ${!n.read ? "bg-primary/5" : ""}`}
               >
                 <p className="text-sm font-medium">{t.notifications.newEval}</p>
                 {n.specialistName && (
@@ -87,6 +86,14 @@ export function NotificationsBell() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(n.createdAt).toLocaleDateString()}
                 </p>
+                {n.evaluationId && (
+                  <Link href={`/evaluations/${n.evaluationId}`} onClick={() => setOpen(false)}>
+                    <Button variant="outline" size="sm" className="mt-2 h-7 text-xs gap-1">
+                      <ExternalLink className="h-3 w-3" />
+                      {t.evalDetail.openEvaluation}
+                    </Button>
+                  </Link>
+                )}
               </div>
             ))
           )}

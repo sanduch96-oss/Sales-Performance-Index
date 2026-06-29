@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, evaluationsTable, criterionScoresTable, specialistsTable, usersTable, criteriaTable, criteriaSectionsTable, notificationsTable } from "@workspace/db";
+import { db, evaluationsTable, criterionScoresTable, specialistsTable, usersTable, criteriaTable, criteriaSectionsTable, notificationsTable, evaluationCommentsTable, tasksTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import {
   CreateEvaluationBody,
@@ -76,6 +76,13 @@ async function buildEvaluationDetail(evaluation: typeof evaluationsTable.$inferS
     averageScore: s.total > 0 ? Math.round((s.earned / s.total) * 1000) / 10 : null,
   }));
 
+  const [tasks, comments] = await Promise.all([
+    db.select().from(tasksTable).where(eq(tasksTable.evaluationId, evaluation.id)),
+    db.select().from(evaluationCommentsTable)
+      .where(eq(evaluationCommentsTable.evaluationId, evaluation.id))
+      .orderBy(evaluationCommentsTable.createdAt),
+  ]);
+
   return {
     id: evaluation.id,
     specialistId: evaluation.specialistId,
@@ -87,6 +94,7 @@ async function buildEvaluationDetail(evaluation: typeof evaluationsTable.$inferS
     clientName: evaluation.clientName,
     evaluationType: evaluation.evaluationType,
     status: evaluation.status,
+    specialistStatus: evaluation.specialistStatus ?? null,
     totalScore: evaluation.totalScore,
     audioUrl: evaluation.audioUrl ?? null,
     sectionScores,
@@ -99,6 +107,19 @@ async function buildEvaluationDetail(evaluation: typeof evaluationsTable.$inferS
       level: r.level,
       score: r.score,
       comment: r.comment ?? null,
+    })),
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      description: t.description,
+      deadline: t.deadline,
+      createdAt: t.createdAt.toISOString(),
+    })),
+    comments: comments.map((c) => ({
+      id: c.id,
+      authorName: c.authorName,
+      authorRole: c.authorRole,
+      message: c.message,
+      createdAt: c.createdAt.toISOString(),
     })),
     createdAt: evaluation.createdAt.toISOString(),
   };
@@ -351,6 +372,108 @@ router.post("/evaluations/:id/finalize", requireAuth, async (req, res): Promise<
   }
 
   res.json(await buildEvaluationDetail(evaluation));
+});
+
+router.post("/evaluations/:id/agree", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const userId = (req.session as any).userId as number;
+
+  const [evaluation] = await db.update(evaluationsTable)
+    .set({ specialistStatus: "agreed" })
+    .where(eq(evaluationsTable.id, id))
+    .returning();
+  if (!evaluation) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Notify the evaluator
+  await db.insert(notificationsTable).values({
+    userId: evaluation.evaluatorId,
+    evaluationId: id,
+  });
+
+  // Add comment entry in conversation
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (user) {
+    await db.insert(evaluationCommentsTable).values({
+      evaluationId: id,
+      userId,
+      authorName: user.username,
+      authorRole: "specialist",
+      message: "✅ Sunt de acord cu evaluarea.",
+    });
+  }
+
+  res.json({ ok: true });
+});
+
+router.post("/evaluations/:id/disagree", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const userId = (req.session as any).userId as number;
+
+  const { message } = req.body as { message?: string };
+  if (!message?.trim()) { res.status(400).json({ error: "Message required" }); return; }
+
+  const [evaluation] = await db.update(evaluationsTable)
+    .set({ specialistStatus: "disagreed" })
+    .where(eq(evaluationsTable.id, id))
+    .returning();
+  if (!evaluation) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (user) {
+    await db.insert(evaluationCommentsTable).values({
+      evaluationId: id,
+      userId,
+      authorName: user.username,
+      authorRole: "specialist",
+      message: message.trim(),
+    });
+  }
+
+  // Notify the evaluator
+  await db.insert(notificationsTable).values({
+    userId: evaluation.evaluatorId,
+    evaluationId: id,
+  });
+
+  res.json({ ok: true });
+});
+
+router.post("/evaluations/:id/comments", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const userId = (req.session as any).userId as number;
+
+  const { message } = req.body as { message?: string };
+  if (!message?.trim()) { res.status(400).json({ error: "Message required" }); return; }
+
+  const [evaluation] = await db.select().from(evaluationsTable).where(eq(evaluationsTable.id, id));
+  if (!evaluation) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  const authorRole = user?.role === "user" ? "specialist" : "evaluator";
+
+  await db.insert(evaluationCommentsTable).values({
+    evaluationId: id,
+    userId,
+    authorName: user?.username ?? "Unknown",
+    authorRole,
+    message: message.trim(),
+  });
+
+  // Notify the other party
+  if (authorRole === "evaluator") {
+    const [specialistUser] = await db.select().from(usersTable)
+      .where(eq(usersTable.specialistId, evaluation.specialistId));
+    if (specialistUser) {
+      await db.insert(notificationsTable).values({ userId: specialistUser.id, evaluationId: id });
+    }
+  } else {
+    await db.insert(notificationsTable).values({ userId: evaluation.evaluatorId, evaluationId: id });
+  }
+
+  res.json({ ok: true });
 });
 
 router.post("/evaluations/:id/audio", requireAuth, async (req, res): Promise<void> => {

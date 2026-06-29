@@ -16,6 +16,7 @@ export const evaluationsTable = pgTable("evaluations", {
   status: text("status").notNull().default("draft"),
   totalScore: real("total_score"),
   audioUrl: text("audio_url"),
+  specialistStatus: text("specialist_status"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

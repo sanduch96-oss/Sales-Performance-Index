@@ -43,8 +43,9 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">Creare cont SPI</CardTitle>
-          <CardDescription>Sales Performance Index</CardDescription>
+          <div className="flex justify-center mb-2">
+            <img src="/logo.png" alt="SPI Logo" className="h-20 w-auto" />
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">

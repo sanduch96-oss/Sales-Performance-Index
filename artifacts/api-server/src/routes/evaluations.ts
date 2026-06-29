@@ -310,7 +310,7 @@ router.delete("/evaluations/:id", requireAuth, async (req, res): Promise<void> =
   res.sendStatus(204);
 });
 
-router.patch("/evaluations/:id/finalize", requireAuth, async (req, res): Promise<void> => {
+router.post("/evaluations/:id/finalize", requireAuth, async (req, res): Promise<void> => {
   const params = FinalizeEvaluationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

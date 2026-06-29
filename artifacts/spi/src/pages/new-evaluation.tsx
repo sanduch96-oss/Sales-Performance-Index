@@ -73,6 +73,7 @@ export default function NewEvaluation() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDeadline, setTaskDeadline] = useState(() => new Date().toISOString().split("T")[0]);
   const [lastEvaluationId, setLastEvaluationId] = useState<number | null>(null);
+  const [localTasks, setLocalTasks] = useState<Array<{ id: number; description: string; deadline: string }>>([]);
 
   useEffect(() => {
     if (isEditMode && existingEval && !prefilled) {
@@ -456,6 +457,21 @@ export default function NewEvaluation() {
                     </Button>
                   </div>
 
+                  {localTasks.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">{t.newEval.addTask}</p>
+                      {localTasks.map(task => (
+                        <div key={task.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/50 text-sm">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{task.description}</p>
+                            <p className="text-xs text-muted-foreground">{task.deadline}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
                     <DialogContent>
                       <DialogHeader>
@@ -490,7 +506,8 @@ export default function NewEvaluation() {
                               };
                               if (lastEvaluationId != null) taskData.evaluationId = lastEvaluationId;
                               if (specialistId != null) taskData.specialistId = specialistId;
-                              await createTask.mutateAsync({ data: taskData as any });
+                              const created = await createTask.mutateAsync({ data: taskData as any });
+                              setLocalTasks(prev => [...prev, { id: created.id, description: created.description, deadline: created.deadline }]);
                               toast({ title: t.newEval.taskAdded });
                               setIsTaskDialogOpen(false);
                               setTaskDescription("");

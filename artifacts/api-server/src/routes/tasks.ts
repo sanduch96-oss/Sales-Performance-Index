@@ -8,7 +8,7 @@ const router: IRouter = Router();
 
 const CreateTaskBody = z.object({
   evaluationId: z.number().int().optional(),
-  specialistId: z.number().int(),
+  specialistId: z.number().int().optional(),
   description: z.string().min(1),
   deadline: z.string(),
 });
@@ -59,14 +59,14 @@ router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const user = (req as any).user;
+  const createdBy = (req.session as any).userId as number;
 
   const [task] = await db.insert(tasksTable).values({
     evaluationId: parsed.data.evaluationId ?? null,
-    specialistId: parsed.data.specialistId,
+    specialistId: parsed.data.specialistId ?? null,
     description: parsed.data.description,
     deadline: parsed.data.deadline,
-    createdBy: user.id,
+    createdBy,
   }).returning();
 
   res.status(201).json({

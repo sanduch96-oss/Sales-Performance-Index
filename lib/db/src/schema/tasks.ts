@@ -7,7 +7,7 @@ import { evaluationsTable } from "./evaluations";
 export const tasksTable = pgTable("tasks", {
   id: serial("id").primaryKey(),
   evaluationId: integer("evaluation_id").references(() => evaluationsTable.id),
-  specialistId: integer("specialist_id").notNull().references(() => specialistsTable.id),
+  specialistId: integer("specialist_id").references(() => specialistsTable.id),
   description: text("description").notNull(),
   deadline: date("deadline", { mode: "string" }).notNull(),
   createdBy: integer("created_by").notNull(),

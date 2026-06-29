@@ -1,19 +1,193 @@
-import { useGetDashboardSummary, useGetLowPerformers, useListEvaluations, useGetMonthlyTrend, useGetRecentEvaluations } from "@workspace/api-client-react";
+import {
+  useGetDashboardSummary,
+  useGetLowPerformers,
+  useListEvaluations,
+  useGetMonthlyTrend,
+  useGetRecentEvaluations,
+  useGetMe,
+  useGetSpecialistStats,
+  useGetSpecialist,
+  getGetSpecialistStatsQueryKey,
+  getGetSpecialistQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Eye, TrendingUp, TrendingDown, Minus, Loader2, ChevronRight } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
 import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
 
+function SpecialistDashboard({ specialistId }: { specialistId: number }) {
+  const { t } = useLanguage();
+
+  const { data: specialist, isLoading: isLoadingSpec } = useGetSpecialist(specialistId, {
+    query: { enabled: !!specialistId, queryKey: getGetSpecialistQueryKey(specialistId) },
+  });
+  const { data: stats, isLoading: isLoadingStats } = useGetSpecialistStats(specialistId, {
+    query: { enabled: !!specialistId, queryKey: getGetSpecialistStatsQueryKey(specialistId) },
+  });
+  const { data: evaluations, isLoading: isLoadingEvals } = useListEvaluations({ specialistId });
+
+  function getScoreBadge(score: number | null) {
+    if (score === null) return null;
+    if (score >= 80) return <Badge className="bg-green-500 hover:bg-green-600">{t.profile.excellent}</Badge>;
+    if (score >= 70) return <Badge className="bg-orange-500 hover:bg-orange-600">{t.profile.good}</Badge>;
+    return <Badge variant="destructive">{t.profile.poor}</Badge>;
+  }
+
+  if (isLoadingSpec || isLoadingStats) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">
+          {specialist ? `${specialist.firstName} ${specialist.lastName}` : t.dashboard.title}
+        </h2>
+        <p className="text-muted-foreground">
+          {specialist?.position} {specialist?.department ? `• ${specialist.department}` : ""}
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t.profile.spiScore}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">
+              {specialist?.spiScore != null ? `${specialist.spiScore}/100` : t.common.na}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t.profile.avgScore}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats?.averageScore != null ? `${stats.averageScore}/100` : t.common.na}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t.profile.evalCount}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.evaluationCount ?? 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>{t.profile.evolution}</CardTitle></CardHeader>
+          <CardContent className="h-[260px]">
+            {stats?.monthlyTrend && stats.monthlyTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.monthlyTrend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name={t.profile.score} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">{t.profile.noData}</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>{t.profile.skills}</CardTitle></CardHeader>
+          <CardContent className="h-[260px]">
+            {stats?.radarData && stats.radarData.length > 2 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={stats.radarData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
+                  <Radar name={t.profile.score} dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
+                  <Tooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm text-center px-4">{t.profile.radarMin}</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.profile.history}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingEvals ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : !evaluations?.length ? (
+            <p className="text-center text-muted-foreground py-8">{t.profile.noEvals}</p>
+          ) : (
+            <div className="space-y-2">
+              {evaluations.filter(ev => ev.status === "finalized").map(ev => (
+                <Link key={ev.id} href={`/evaluations/${ev.id}`}>
+                  <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full mr-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t.profile.date}</p>
+                        <p className="font-medium">{new Date(ev.date).toLocaleDateString()} {ev.time}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t.profile.client}</p>
+                        <p className="font-medium truncate">{ev.clientName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{t.profile.type}</p>
+                        <p className="font-medium capitalize">{ev.evaluationType}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 whitespace-nowrap">
+                      {getScoreBadge(ev.totalScore)}
+                      <span className="font-bold w-16 text-right">{ev.totalScore !== null ? `${ev.totalScore}/100` : "-"}</span>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const { t } = useLanguage();
+  const { data: user } = useGetMe();
+
+  if (user?.role === "user" && user.specialistId) {
+    return <SpecialistDashboard specialistId={user.specialistId} />;
+  }
+
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
   const { t } = useLanguage();
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: trend, isLoading: isLoadingTrend } = useGetMonthlyTrend();
@@ -154,7 +328,6 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t.dashboard.weakestSection}</CardTitle>
             <Dialog>
-
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-4 w-4">
                   <Eye className="h-4 w-4 text-muted-foreground" />

@@ -88,14 +88,25 @@ export default function SpecialistProfile() {
           <p className="text-muted-foreground">{specialist.position} • {specialist.department}</p>
         </div>
         <div className="ml-auto flex items-center gap-4 flex-wrap">
-          <Button
-            variant="outline"
-            onClick={() => generateCredentials.mutate()}
-            disabled={generateCredentials.isPending}
-          >
-            {generateCredentials.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-            {t.profile.generateLogin}
-          </Button>
+          {(specialist as any).linkedUsername ? (
+            <Button
+              variant="outline"
+              onClick={() => setIsCredDialogOpen(true)}
+              className="border-green-500 text-green-700 hover:bg-green-50"
+            >
+              <KeyRound className="mr-2 h-4 w-4" />
+              {(specialist as any).linkedUsername}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => generateCredentials.mutate()}
+              disabled={generateCredentials.isPending}
+            >
+              {generateCredentials.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              {t.profile.generateLogin}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => {

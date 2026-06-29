@@ -24,6 +24,7 @@ export interface User {
   id: number;
   username: string;
   role: string;
+  specialistId?: number | null;
 }
 
 export interface AuthResponse {

@@ -118,10 +118,16 @@ router.get("/specialists/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const [row] = await db
-    .select({ avgScore: avg(evaluationsTable.totalScore), cnt: count(evaluationsTable.id) })
-    .from(evaluationsTable)
-    .where(and(eq(evaluationsTable.specialistId, s.id), eq(evaluationsTable.status, "finalized")));
+  const [[row], [linkedUser]] = await Promise.all([
+    db
+      .select({ avgScore: avg(evaluationsTable.totalScore), cnt: count(evaluationsTable.id) })
+      .from(evaluationsTable)
+      .where(and(eq(evaluationsTable.specialistId, s.id), eq(evaluationsTable.status, "finalized"))),
+    db
+      .select({ username: usersTable.username })
+      .from(usersTable)
+      .where(eq(usersTable.specialistId, s.id)),
+  ]);
 
   res.json({
     id: s.id,
@@ -137,6 +143,7 @@ router.get("/specialists/:id", requireAuth, async (req, res): Promise<void> => {
     evaluationCount: Number(row?.cnt ?? 0),
     monthlyTarget: s.monthlyTarget ?? null,
     createdAt: s.createdAt.toISOString(),
+    linkedUsername: linkedUser?.username ?? null,
   });
 });
 

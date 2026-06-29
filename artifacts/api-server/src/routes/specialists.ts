@@ -17,8 +17,9 @@ import { requireAuth } from "../middlewares/requireAuth";
 const router: IRouter = Router();
 
 router.get("/specialists", requireAuth, async (req, res): Promise<void> => {
-  const params = ListSpecialistsQueryParams.safeParse(req.query);
-  const archived = params.success && params.data.archived === true;
+  // zod.coerce.boolean converts string "false" to true (Boolean("false") === true)
+  // so we parse the string directly instead
+  const archived = req.query.archived === "true";
 
   const specialists = await db
     .select()

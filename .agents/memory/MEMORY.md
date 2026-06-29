@@ -1,0 +1,1 @@
+- [Zod coerce boolean](zod-boolean-coerce.md) — z.coerce.boolean() treats non-empty string "false" as true; use req.query.x === "true" instead

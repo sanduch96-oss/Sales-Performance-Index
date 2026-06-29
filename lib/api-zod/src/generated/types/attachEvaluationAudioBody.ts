@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RegisterInput {
-  username: string;
-  password: string;
-  role?: string;
-}
+export type AttachEvaluationAudioBody = {
+  audio?: Blob;
+};

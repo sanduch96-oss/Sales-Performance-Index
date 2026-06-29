@@ -9,6 +9,7 @@ import {
   useAttachEvaluationAudio,
   useGetMe,
   useGetEvaluation,
+  useCreateTask,
   getGetEvaluationQueryKey,
   getListEvaluationsQueryKey
 } from "@workspace/api-client-react";
@@ -18,10 +19,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Upload, Check, X, Minus } from "lucide-react";
+import { Loader2, ArrowLeft, Upload, Check, X, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/contexts/language-context";
 import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
@@ -52,6 +54,7 @@ export default function NewEvaluation() {
   const updateEvaluation = useUpdateEvaluation();
   const finalizeEvaluation = useFinalizeEvaluation();
   const attachAudio = useAttachEvaluationAudio();
+  const createTask = useCreateTask();
 
   const [formData, setFormData] = useState({
     specialistId: prefilledSpecialistId,
@@ -66,6 +69,10 @@ export default function NewEvaluation() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskDeadline, setTaskDeadline] = useState(() => new Date().toISOString().split("T")[0]);
+  const [lastEvaluationId, setLastEvaluationId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isEditMode && existingEval && !prefilled) {
@@ -206,7 +213,7 @@ export default function NewEvaluation() {
       if (audioFile) {
         try {
           const base64 = await fileToBase64(audioFile);
-          await attachAudio.mutateAsync({ id: evaluationId, data: { audioUrl: base64 } });
+          await attachAudio.mutateAsync({ id: evaluationId, data: { audioUrl: base64 } as any });
         } catch {
           toast({ variant: "destructive", title: t.newEval.audioError });
         }
@@ -220,6 +227,7 @@ export default function NewEvaluation() {
       }
 
       await queryClient.invalidateQueries({ queryKey: getListEvaluationsQueryKey() });
+      setLastEvaluationId(evaluationId);
       setLocation(`/evaluations/${evaluationId}`);
     } catch {
       toast({ variant: "destructive", title: t.newEval.saveError, description: t.newEval.saveErrorDesc });
@@ -437,7 +445,66 @@ export default function NewEvaluation() {
                     >
                       {isEditMode ? t.newEval.saveChanges : t.newEval.saveDraft}
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setIsTaskDialogOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {t.newEval.addTask}
+                    </Button>
                   </div>
+
+                  <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>{t.newEval.addTask}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                          <Label>{t.newEval.taskDescription}</Label>
+                          <Textarea
+                            value={taskDescription}
+                            onChange={e => setTaskDescription(e.target.value)}
+                            placeholder={t.newEval.taskDescription}
+                            rows={3}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{t.newEval.taskDeadline}</Label>
+                          <LocalizedDatePicker value={taskDeadline} onChange={setTaskDeadline} className="w-full" />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsTaskDialogOpen(false)}>{t.newEval.cancel}</Button>
+                        <Button
+                          disabled={!taskDescription.trim() || createTask.isPending}
+                          onClick={async () => {
+                            const specialistId = formData.specialistId ? parseInt(formData.specialistId) : undefined;
+                            if (!taskDescription.trim()) return;
+                            try {
+                              const taskData: { description: string; deadline: string; specialistId?: number; evaluationId?: number } = {
+                                description: taskDescription,
+                                deadline: taskDeadline,
+                              };
+                              if (lastEvaluationId != null) taskData.evaluationId = lastEvaluationId;
+                              if (specialistId != null) taskData.specialistId = specialistId;
+                              await createTask.mutateAsync({ data: taskData as any });
+                              toast({ title: t.newEval.taskAdded });
+                              setIsTaskDialogOpen(false);
+                              setTaskDescription("");
+                            } catch {
+                              toast({ variant: "destructive", title: t.newEval.saveError });
+                            }
+                          }}
+                        >
+                          {createTask.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {t.common.save}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>

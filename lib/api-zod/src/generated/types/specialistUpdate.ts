@@ -15,4 +15,6 @@ export interface SpecialistUpdate {
   hireDate?: string;
   manager?: string;
   status?: SpecialistUpdateStatus;
+  /** @nullable */
+  monthlyTarget?: number | null;
 }

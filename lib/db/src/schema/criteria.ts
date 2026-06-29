@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const criteriaSectionsTable = pgTable("criteria_sections", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  channel: text("channel").notNull().default("call"),
   displayOrder: integer("display_order").notNull().default(0),
 });
 

@@ -5,7 +5,9 @@
  * Sales Performance Index API
  * OpenAPI spec version: 0.1.0
  */
+import type { CriteriaSectionUpdateChannel } from './criteriaSectionUpdateChannel';
 
 export interface CriteriaSectionUpdate {
   name?: string;
+  channel?: CriteriaSectionUpdateChannel;
 }

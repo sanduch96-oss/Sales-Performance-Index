@@ -15,6 +15,7 @@ export interface DashboardSummary {
   totalEvaluations: number;
   evaluationsThisMonth: number;
   evaluationsLastMonth: number;
+  totalMonthlyTarget: number;
   /** @nullable */
   bestSection: string | null;
   /** @nullable */

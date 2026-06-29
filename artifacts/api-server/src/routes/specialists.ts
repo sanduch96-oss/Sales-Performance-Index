@@ -54,6 +54,7 @@ router.get("/specialists", requireAuth, async (req, res): Promise<void> => {
         archived: s.archived,
         spiScore: row?.avgScore != null ? parseFloat(String(row.avgScore)) : null,
         evaluationCount: Number(row?.cnt ?? 0),
+        monthlyTarget: s.monthlyTarget ?? null,
         createdAt: s.createdAt.toISOString(),
       };
     }),
@@ -94,6 +95,7 @@ router.post("/specialists", requireAuth, async (req, res): Promise<void> => {
     archived: specialist.archived,
     spiScore: null,
     evaluationCount: 0,
+    monthlyTarget: specialist.monthlyTarget ?? null,
     createdAt: specialist.createdAt.toISOString(),
   });
 });
@@ -132,6 +134,7 @@ router.get("/specialists/:id", requireAuth, async (req, res): Promise<void> => {
     archived: s.archived,
     spiScore: row?.avgScore != null ? parseFloat(String(row.avgScore)) : null,
     evaluationCount: Number(row?.cnt ?? 0),
+    monthlyTarget: s.monthlyTarget ?? null,
     createdAt: s.createdAt.toISOString(),
   });
 });
@@ -177,6 +180,7 @@ router.patch("/specialists/:id", requireAuth, async (req, res): Promise<void> =>
     archived: s.archived,
     spiScore: row?.avgScore != null ? parseFloat(String(row.avgScore)) : null,
     evaluationCount: Number(row?.cnt ?? 0),
+    monthlyTarget: s.monthlyTarget ?? null,
     createdAt: s.createdAt.toISOString(),
   });
 });
@@ -233,6 +237,7 @@ router.patch("/specialists/:id/archive", requireAuth, async (req, res): Promise<
     archived: s.archived,
     spiScore: row?.avgScore != null ? parseFloat(String(row.avgScore)) : null,
     evaluationCount: Number(row?.cnt ?? 0),
+    monthlyTarget: s.monthlyTarget ?? null,
     createdAt: s.createdAt.toISOString(),
   });
 });

@@ -67,6 +67,7 @@ const translations = {
       cancel: "Anulare",
       save: "Salvează",
       addTitle: "Adaugă specialist nou",
+      monthlyTarget: "Obiectiv lunar (evaluări)",
     },
     evaluations: {
       title: "Evaluări",
@@ -136,6 +137,10 @@ const translations = {
       draftSaved: "Draft salvat",
       selectSpecialist: "Selectează specialist",
       obtainedScore: "Punctaj obținut",
+      addTask: "Adaugă task",
+      taskDescription: "Descriere task",
+      taskDeadline: "Termen limită",
+      taskAdded: "Task adăugat cu succes",
     },
     evalDetail: {
       title: "Detalii evaluare",
@@ -253,6 +258,8 @@ const translations = {
       deleteCriterion: "Șterge criteriul?",
       totalWeight: "Pontaj total",
       rename: "Redenumire",
+      callChannel: "Apel",
+      chatChannel: "Chat",
     },
     common: {
       save: "Salvează",
@@ -332,6 +339,7 @@ const translations = {
       cancel: "Отмена",
       save: "Сохранить",
       addTitle: "Добавить нового специалиста",
+      monthlyTarget: "Месячный план (оценок)",
     },
     evaluations: {
       title: "Оценки",
@@ -401,6 +409,10 @@ const translations = {
       draftSaved: "Черновик сохранён",
       selectSpecialist: "Выберите специалиста",
       obtainedScore: "Полученный балл",
+      addTask: "Добавить задачу",
+      taskDescription: "Описание задачи",
+      taskDeadline: "Срок выполнения",
+      taskAdded: "Задача успешно добавлена",
     },
     evalDetail: {
       title: "Детали оценки",
@@ -518,6 +530,8 @@ const translations = {
       deleteCriterion: "Удалить критерий?",
       totalWeight: "Общий вес",
       rename: "Переименовать",
+      callChannel: "Звонок",
+      chatChannel: "Чат",
     },
     common: {
       save: "Сохранить",
@@ -597,6 +611,7 @@ const translations = {
       cancel: "Cancel",
       save: "Save",
       addTitle: "Add new specialist",
+      monthlyTarget: "Monthly target (evaluations)",
     },
     evaluations: {
       title: "Evaluations",
@@ -666,6 +681,10 @@ const translations = {
       draftSaved: "Draft saved",
       selectSpecialist: "Select specialist",
       obtainedScore: "Obtained score",
+      addTask: "Add task",
+      taskDescription: "Task description",
+      taskDeadline: "Deadline",
+      taskAdded: "Task added successfully",
     },
     evalDetail: {
       title: "Evaluation details",
@@ -783,6 +802,8 @@ const translations = {
       deleteCriterion: "Delete criterion?",
       totalWeight: "Total weight",
       rename: "Rename",
+      callChannel: "Call",
+      chatChannel: "Chat",
     },
     common: {
       save: "Save",

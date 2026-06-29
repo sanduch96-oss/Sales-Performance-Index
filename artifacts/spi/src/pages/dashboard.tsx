@@ -1,19 +1,17 @@
 import { useGetDashboardSummary, useGetLowPerformers, useListEvaluations, useGetMonthlyTrend, useGetRecentEvaluations } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, TrendingUp, TrendingDown, Minus, Loader2, Pencil, Check } from "lucide-react";
+import { Eye, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
 import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
-
-const MONTHLY_TARGET_KEY = "spi_monthly_eval_target";
 
 export default function Dashboard() {
   const { t } = useLanguage();
@@ -23,13 +21,6 @@ export default function Dashboard() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
-  const [monthlyTarget, setMonthlyTarget] = useState<number>(() => {
-    const saved = localStorage.getItem(MONTHLY_TARGET_KEY);
-    return saved ? parseInt(saved) : 20;
-  });
-  const [isEditingTarget, setIsEditingTarget] = useState(false);
-  const [targetInput, setTargetInput] = useState("");
 
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
@@ -62,6 +53,8 @@ export default function Dashboard() {
     ? (summary.averageTeamScore ?? 0) - summary.averageScoreLastMonth
     : 0;
 
+  const monthlyTarget = (summary as any).totalMonthlyTarget ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -91,120 +84,69 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
-            <div className="flex items-center gap-1">
-              {isEditingTarget ? (
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    min={1}
-                    className="h-6 w-16 text-xs px-2"
-                    value={targetInput}
-                    onChange={e => setTargetInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        const val = parseInt(targetInput);
-                        if (val > 0) {
-                          setMonthlyTarget(val);
-                          localStorage.setItem(MONTHLY_TARGET_KEY, String(val));
-                        }
-                        setIsEditingTarget(false);
-                      }
-                      if (e.key === "Escape") setIsEditingTarget(false);
-                    }}
-                    autoFocus
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => {
-                      const val = parseInt(targetInput);
-                      if (val > 0) {
-                        setMonthlyTarget(val);
-                        localStorage.setItem(MONTHLY_TARGET_KEY, String(val));
-                      }
-                      setIsEditingTarget(false);
-                    }}
-                  >
-                    <Check className="h-3 w-3" />
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  title={t.dashboard.editTarget}
-                  onClick={() => {
-                    setTargetInput(String(monthlyTarget));
-                    setIsEditingTarget(true);
-                  }}
-                >
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
-              )}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{t.dashboard.allEvals}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">{t.dashboard.from}</Label>
-                        <LocalizedDatePicker value={dateFrom} onChange={setDateFrom} className="w-full" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">{t.dashboard.to}</Label>
-                        <LocalizedDatePicker value={dateTo} onChange={setDateTo} className="w-full" />
-                      </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{t.dashboard.allEvals}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">{t.dashboard.from}</Label>
+                      <LocalizedDatePicker value={dateFrom} onChange={setDateFrom} className="w-full" />
                     </div>
-                    {isLoadingAllEvals ? (
-                      <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                    ) : (
-                      <div className="space-y-2">
-                        {allEvaluations?.map(evalItem => (
-                          <div key={evalItem.id} className="flex justify-between items-center p-3 border rounded-lg">
-                            <div>
-                              <p className="font-medium">{evalItem.specialistName}</p>
-                              <p className="text-xs text-muted-foreground">{new Date(evalItem.date).toLocaleDateString()} • {evalItem.evaluationType}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold">{evalItem.totalScore}/100</span>
-                              {getScoreBadge(evalItem.totalScore)}
-                            </div>
-                          </div>
-                        ))}
-                        {!allEvaluations?.length && (
-                          <p className="text-center text-muted-foreground py-4">{t.dashboard.noEvalsInterval}</p>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">{t.dashboard.to}</Label>
+                      <LocalizedDatePicker value={dateTo} onChange={setDateTo} className="w-full" />
+                    </div>
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  {isLoadingAllEvals ? (
+                    <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-2">
+                      {allEvaluations?.map(evalItem => (
+                        <div key={evalItem.id} className="flex justify-between items-center p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{evalItem.specialistName}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(evalItem.date).toLocaleDateString()} • {evalItem.evaluationType}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold">{evalItem.totalScore}/100</span>
+                            {getScoreBadge(evalItem.totalScore)}
+                          </div>
+                        </div>
+                      ))}
+                      {!allEvaluations?.length && (
+                        <p className="text-center text-muted-foreground py-4">{t.dashboard.noEvalsInterval}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalEvaluations}</div>
-            <div className="mt-3 space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{t.dashboard.monthlyProgress}</span>
-                <span>{summary.evaluationsThisMonth} / {monthlyTarget}</span>
+            {monthlyTarget > 0 && (
+              <div className="mt-3 space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{t.dashboard.monthlyProgress}</span>
+                  <span>{summary.evaluationsThisMonth} / {monthlyTarget}</span>
+                </div>
+                <Progress
+                  value={Math.min((summary.evaluationsThisMonth / monthlyTarget) * 100, 100)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.dashboard.target}: {monthlyTarget} {t.dashboard.evalsPerMonth}
+                </p>
               </div>
-              <Progress
-                value={Math.min((summary.evaluationsThisMonth / monthlyTarget) * 100, 100)}
-                className="h-2"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t.dashboard.target}: {monthlyTarget} {t.dashboard.evalsPerMonth}
-              </p>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -212,6 +154,7 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t.dashboard.weakestSection}</CardTitle>
             <Dialog>
+
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-4 w-4">
                   <Eye className="h-4 w-4 text-muted-foreground" />
@@ -219,35 +162,29 @@ export default function Dashboard() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{t.dashboard.lowPerformers}</DialogTitle>
+                  <DialogTitle>{t.dashboard.sectionPerformance}</DialogTitle>
                 </DialogHeader>
-                {isLoadingLowPerformers ? (
-                  <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                ) : (
-                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                    {lowPerformers?.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">{t.dashboard.noLowPerformers}</p>
-                    ) : lowPerformers?.map(specialist => (
-                      <div key={specialist.id} className="flex justify-between items-center p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{specialist.firstName} {specialist.lastName}</p>
-                          <p className="text-xs text-muted-foreground">{specialist.position}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-red-500">{specialist.spiScore}/100</p>
-                        </div>
+                <div className="space-y-3 pt-2">
+                  {summary.sectionScores?.map((sp) => (
+                    <div key={sp.sectionId} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="truncate max-w-[200px]">{sp.sectionName}</span>
+                        <span className="font-medium">{(sp.averageScore ?? 0).toFixed(1)}%</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <Progress value={sp.averageScore ?? 0} className="h-1.5" />
+                    </div>
+                  ))}
+                  {(!summary.sectionScores || summary.sectionScores.length === 0) && (
+                    <p className="text-center text-muted-foreground py-4">{t.dashboard.noData}</p>
+                  )}
+                </div>
               </DialogContent>
             </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold truncate">{summary.worstSection || t.common.na}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {summary.worstSectionScore !== null && summary.worstSectionScore !== undefined ? `${summary.worstSectionScore}% ${t.evalDetail.average}` : ""}
-            </p>
+            <div className="text-lg font-bold truncate">
+              {summary.worstSection ?? <span className="text-muted-foreground text-sm font-normal">{t.dashboard.noData}</span>}
+            </div>
           </CardContent>
         </Card>
 
@@ -256,116 +193,106 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium">{t.dashboard.bestSection}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold truncate">{summary.bestSection || t.common.na}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {summary.bestSectionScore !== null && summary.bestSectionScore !== undefined ? `${summary.bestSectionScore}% ${t.evalDetail.average}` : ""}
-            </p>
+            <div className="text-lg font-bold truncate">
+              {summary.bestSection ?? <span className="text-muted-foreground text-sm font-normal">{t.dashboard.noData}</span>}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-7">
-        <div className="col-span-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.dashboard.sectionPerformance}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {summary.sectionScores.map(section => (
-                <div key={section.sectionId} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>{section.sectionName}</span>
-                    <span className="font-medium">{section.averageScore !== null ? `${section.averageScore}%` : t.common.na}</span>
-                  </div>
-                  <Progress value={section.averageScore || 0} className="h-2" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <CardTitle>{t.dashboard.monthlyTrend}</CardTitle>
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs text-muted-foreground">{t.dashboard.trendFrom}</Label>
-                    <input
-                      type="month"
-                      className="px-2 py-1 border rounded-md text-sm bg-background"
-                      value={trendFrom}
-                      onChange={e => setTrendFrom(e.target.value)}
-                    />
-                  </div>
-                  <span className="text-muted-foreground mt-4">—</span>
-                  <div className="space-y-0.5">
-                    <Label className="text-xs text-muted-foreground">{t.dashboard.trendTo}</Label>
-                    <input
-                      type="month"
-                      className="px-2 py-1 border rounded-md text-sm bg-background"
-                      value={trendTo}
-                      onChange={e => setTrendTo(e.target.value)}
-                    />
-                  </div>
-                </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.dashboard.monthlyTrend}</CardTitle>
+            <div className="flex gap-3 mt-2">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">{t.dashboard.trendFrom}</Label>
+                <Input type="month" value={trendFrom} onChange={e => setTrendFrom(e.target.value)} className="h-8 text-sm" />
               </div>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              {(() => {
-                const filtered = (trend ?? []).filter(p => {
-                  if (trendFrom && p.month < trendFrom) return false;
-                  if (trendTo && p.month > trendTo) return false;
-                  return true;
-                });
-                return filtered.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={filtered} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name={t.reports.avgScore} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground text-sm">{t.dashboard.noDataInterval}</div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs text-muted-foreground">{t.dashboard.trendTo}</Label>
+                <Input type="month" value={trendTo} onChange={e => setTrendTo(e.target.value)} className="h-8 text-sm" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingTrend ? (
+              <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            ) : !trend?.length ? (
+              <p className="text-center text-muted-foreground py-8">{t.dashboard.noData}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => [`${v}/100`, t.dashboard.avgScore]} />
+                  <Line type="monotone" dataKey="avgScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="col-span-3">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>{t.dashboard.recentEvals}</CardTitle>
-              <CardDescription>{t.dashboard.recentDesc} {recent?.length || 0} {t.dashboard.recentDesc2}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recent?.map(evalItem => (
-                <div key={evalItem.id} className="flex flex-col gap-2 p-3 border rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <Link href={`/evaluations/${evalItem.id}`}>
-                        <p className="font-semibold hover:text-primary cursor-pointer transition-colors">{evalItem.specialistName}</p>
-                      </Link>
-                      <p className="text-xs text-muted-foreground">{evalItem.evaluationType} • {new Date(evalItem.date).toLocaleDateString()}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.dashboard.recentEvals}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t.dashboard.recentDesc} 5 {t.dashboard.recentDesc2}
+            </p>
+          </CardHeader>
+          <CardContent>
+            {isLoadingRecent ? (
+              <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            ) : !recent?.length ? (
+              <p className="text-center text-muted-foreground py-8">{t.dashboard.noRecent}</p>
+            ) : (
+              <div className="space-y-3">
+                {recent.map(evalItem => (
+                  <Link key={evalItem.id} href={`/evaluations/${evalItem.id}`}>
+                    <div className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
+                      <div>
+                        <p className="font-medium text-sm">{evalItem.specialistName}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(evalItem.date).toLocaleDateString()} • {evalItem.evaluationType}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{evalItem.totalScore}/100</span>
+                        {getScoreBadge(evalItem.totalScore)}
+                      </div>
                     </div>
-                    {getScoreBadge(evalItem.totalScore)}
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t text-sm">
-                    <span className="text-muted-foreground">{t.dashboard.score}:</span>
-                    <span className="font-bold">{evalItem.totalScore !== null ? `${evalItem.totalScore}/100` : "-"}</span>
-                  </div>
-                </div>
-              ))}
-              {!recent?.length && (
-                <div className="text-center text-muted-foreground py-8">{t.dashboard.noRecent}</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.dashboard.lowPerformers}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingLowPerformers ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : !lowPerformers?.length ? (
+            <p className="text-center text-muted-foreground py-4">{t.dashboard.noLowPerformers}</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {lowPerformers.map(sp => (
+                <Link key={sp.id} href={`/specialists/${sp.id}`}>
+                  <div className="flex justify-between items-center py-3 hover:bg-muted/30 transition-colors cursor-pointer px-2 rounded-lg">
+                    <div>
+                      <p className="font-medium">{sp.firstName} {sp.lastName}</p>
+                    </div>
+                    <Badge variant="destructive">{(sp.spiScore ?? 0).toFixed(1)}/100</Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -5,7 +5,9 @@
  * Sales Performance Index API
  * OpenAPI spec version: 0.1.0
  */
+import type { CriteriaSectionCreateChannel } from './criteriaSectionCreateChannel';
 
 export interface CriteriaSectionCreate {
   name: string;
+  channel: CriteriaSectionCreateChannel;
 }

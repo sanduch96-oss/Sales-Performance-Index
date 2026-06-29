@@ -32,8 +32,9 @@ export default function Settings() {
   const { language, setLanguage, t } = useLanguage();
 
   const [openPanel, setOpenPanel] = useState<"language" | "criteria" | null>(null);
+  const [criteriaChannel, setCriteriaChannel] = useState<"call" | "chat">("call");
 
-  const { data: sections, isLoading } = useListCriteriaSections();
+  const { data: sections, isLoading } = useListCriteriaSections({ channel: criteriaChannel });
   const createSection = useCreateCriteriaSection();
   const updateSection = useUpdateCriteriaSection();
   const deleteSection = useDeleteCriteriaSection();
@@ -55,7 +56,7 @@ export default function Settings() {
     const name = newSectionName.trim();
     if (!name) return;
     try {
-      await createSection.mutateAsync({ data: { name } });
+      await createSection.mutateAsync({ data: { name, channel: criteriaChannel } as any });
       setNewSectionName("");
       await invalidate();
       toast({ title: "Compartiment adăugat" });
@@ -202,6 +203,31 @@ export default function Settings() {
 
           {openPanel === "criteria" && (
             <div className="px-5 pb-5 pt-2 border-t bg-muted/10">
+              {/* Channel selector */}
+              <div className="flex gap-2 pt-3 pb-1">
+                <button
+                  onClick={() => setCriteriaChannel("call")}
+                  className={cn(
+                    "px-5 py-1.5 rounded-lg border-2 text-sm font-medium transition-all",
+                    criteriaChannel === "call"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  {t.settings.callChannel}
+                </button>
+                <button
+                  onClick={() => setCriteriaChannel("chat")}
+                  className={cn(
+                    "px-5 py-1.5 rounded-lg border-2 text-sm font-medium transition-all",
+                    criteriaChannel === "chat"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                  )}
+                >
+                  {t.settings.chatChannel}
+                </button>
+              </div>
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />

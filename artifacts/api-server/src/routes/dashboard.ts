@@ -94,12 +94,20 @@ router.get("/dashboard/summary", requireAuth, async (_req, res): Promise<void> =
     null as (typeof sections)[0] | null,
   );
 
+  // Sum of monthly targets across all active specialists
+  const activeSpecialists = await db
+    .select({ monthlyTarget: specialistsTable.monthlyTarget })
+    .from(specialistsTable)
+    .where(eq(specialistsTable.archived, false));
+  const totalMonthlyTarget = activeSpecialists.reduce((sum, s) => sum + (s.monthlyTarget ?? 0), 0);
+
   res.json({
     averageTeamScore: avgRow?.avg != null ? Math.round(parseFloat(String(avgRow.avg)) * 10) / 10 : null,
     averageScoreLastMonth: lastMonthAvgRow?.avg != null ? Math.round(parseFloat(String(lastMonthAvgRow.avg)) * 10) / 10 : null,
     totalEvaluations: Number(avgRow?.cnt ?? 0),
     evaluationsThisMonth: Number(thisMonthRow?.cnt ?? 0),
     evaluationsLastMonth: Number(lastMonthRow?.cnt ?? 0),
+    totalMonthlyTarget,
     bestSection: bestSection?.sectionName ?? null,
     bestSectionScore: bestSection?.averageScore ?? null,
     worstSection: worstSection?.sectionName ?? null,

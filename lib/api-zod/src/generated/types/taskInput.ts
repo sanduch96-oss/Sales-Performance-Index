@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RegisterInput {
-  username: string;
-  password: string;
-  role?: string;
+export interface TaskInput {
+  evaluationId?: number;
+  specialistId: number;
+  description: string;
+  deadline: string;
 }

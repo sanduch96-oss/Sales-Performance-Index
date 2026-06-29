@@ -5,11 +5,13 @@
  * Sales Performance Index API
  * OpenAPI spec version: 0.1.0
  */
+import type { CriteriaSectionChannel } from './criteriaSectionChannel';
 import type { Criterion } from './criterion';
 
 export interface CriteriaSection {
   id: number;
   name: string;
+  channel: CriteriaSectionChannel;
   totalWeight: number;
   criteria: Criterion[];
 }

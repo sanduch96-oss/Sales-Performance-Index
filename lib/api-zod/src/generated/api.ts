@@ -19,16 +19,10 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Register a new user
  */
-export const registerBodyUsernameMin = 3;
-
-export const registerBodyPasswordMin = 6;
-
-
-
 export const RegisterBody = zod.object({
-  "username": zod.string().min(registerBodyUsernameMin),
-  "password": zod.string().min(registerBodyPasswordMin),
-  "role": zod.string()
+  "username": zod.string(),
+  "password": zod.string(),
+  "role": zod.string().optional()
 })
 
 export const RegisterResponse = zod.object({
@@ -92,6 +86,7 @@ export const ListSpecialistsResponseItem = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 export const ListSpecialistsResponse = zod.array(ListSpecialistsResponseItem)
@@ -107,7 +102,8 @@ export const CreateSpecialistBody = zod.object({
   "department": zod.string(),
   "hireDate": zod.string(),
   "manager": zod.string().optional(),
-  "status": zod.enum(['active', 'inactive'])
+  "status": zod.enum(['active', 'inactive']),
+  "monthlyTarget": zod.number().optional()
 })
 
 export const CreateSpecialistResponse = zod.object({
@@ -122,6 +118,7 @@ export const CreateSpecialistResponse = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -145,6 +142,7 @@ export const GetSpecialistResponse = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -163,7 +161,8 @@ export const UpdateSpecialistBody = zod.object({
   "department": zod.string().optional(),
   "hireDate": zod.string().optional(),
   "manager": zod.string().optional(),
-  "status": zod.enum(['active', 'inactive']).optional()
+  "status": zod.enum(['active', 'inactive']).optional(),
+  "monthlyTarget": zod.number().nullish()
 })
 
 export const UpdateSpecialistResponse = zod.object({
@@ -178,6 +177,7 @@ export const UpdateSpecialistResponse = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -215,6 +215,7 @@ export const ArchiveSpecialistResponse = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -397,7 +398,7 @@ export const UpdateEvaluationResponse = zod.object({
 
 
 /**
- * @summary Delete a draft evaluation
+ * @summary Delete an evaluation
  */
 export const DeleteEvaluationParams = zod.object({
   "id": zod.coerce.number()
@@ -446,39 +447,32 @@ export const FinalizeEvaluationResponse = zod.object({
 
 
 /**
- * @summary Attach audio URL for evaluation
+ * @summary Attach audio to an evaluation
  */
 export const AttachEvaluationAudioParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const AttachEvaluationAudioBody = zod.object({
-  "audioUrl": zod.string()
+  "audio": zod.instanceof(File).optional()
 })
 
 export const AttachEvaluationAudioResponse = zod.object({
-  "id": zod.number(),
-  "specialistId": zod.number(),
-  "specialistName": zod.string(),
-  "evaluatorId": zod.number(),
-  "evaluatorName": zod.string(),
-  "date": zod.string(),
-  "time": zod.string(),
-  "clientName": zod.string(),
-  "evaluationType": zod.enum(['call', 'meeting', 'chat']),
-  "status": zod.enum(['draft', 'finalized']),
-  "totalScore": zod.number().nullable(),
-  "audioUrl": zod.string().nullish(),
-  "createdAt": zod.string().optional()
+  "audioUrl": zod.string()
 })
 
 
 /**
  * @summary List all criteria sections with criteria
  */
+export const ListCriteriaSectionsQueryParams = zod.object({
+  "channel": zod.enum(['call', 'chat']).optional()
+})
+
 export const ListCriteriaSectionsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "channel": zod.enum(['call', 'chat']),
   "totalWeight": zod.number(),
   "criteria": zod.array(zod.object({
   "id": zod.number(),
@@ -491,15 +485,17 @@ export const ListCriteriaSectionsResponse = zod.array(ListCriteriaSectionsRespon
 
 
 /**
- * @summary Create a new criteria section
+ * @summary Create a criteria section
  */
 export const CreateCriteriaSectionBody = zod.object({
-  "name": zod.string()
+  "name": zod.string(),
+  "channel": zod.enum(['call', 'chat'])
 })
 
 export const CreateCriteriaSectionResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "channel": zod.enum(['call', 'chat']),
   "totalWeight": zod.number(),
   "criteria": zod.array(zod.object({
   "id": zod.number(),
@@ -518,12 +514,14 @@ export const UpdateCriteriaSectionParams = zod.object({
 })
 
 export const UpdateCriteriaSectionBody = zod.object({
-  "name": zod.string().optional()
+  "name": zod.string().optional(),
+  "channel": zod.enum(['call', 'chat']).optional()
 })
 
 export const UpdateCriteriaSectionResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "channel": zod.enum(['call', 'chat']),
   "totalWeight": zod.number(),
   "criteria": zod.array(zod.object({
   "id": zod.number(),
@@ -545,7 +543,7 @@ export const DeleteCriteriaSectionResponse = zod.void()
 
 
 /**
- * @summary Create a new criterion in a section
+ * @summary Create a criterion
  */
 export const CreateCriterionBody = zod.object({
   "sectionId": zod.number(),
@@ -562,7 +560,7 @@ export const CreateCriterionResponse = zod.object({
 
 
 /**
- * @summary Update a criterion weight or name
+ * @summary Update a criterion
  */
 export const UpdateCriterionParams = zod.object({
   "id": zod.coerce.number()
@@ -592,7 +590,58 @@ export const DeleteCriterionResponse = zod.void()
 
 
 /**
- * @summary Get overall team dashboard summary
+ * @summary List tasks
+ */
+export const ListTasksQueryParams = zod.object({
+  "specialistId": zod.coerce.number().optional(),
+  "evaluationId": zod.coerce.number().optional()
+})
+
+export const ListTasksResponseItem = zod.object({
+  "id": zod.number(),
+  "evaluationId": zod.number().nullish(),
+  "specialistId": zod.number(),
+  "description": zod.string(),
+  "deadline": zod.string(),
+  "createdBy": zod.number(),
+  "createdAt": zod.string()
+})
+export const ListTasksResponse = zod.array(ListTasksResponseItem)
+
+
+/**
+ * @summary Create a task for a specialist
+ */
+export const CreateTaskBody = zod.object({
+  "evaluationId": zod.number().optional(),
+  "specialistId": zod.number(),
+  "description": zod.string(),
+  "deadline": zod.string()
+})
+
+export const CreateTaskResponse = zod.object({
+  "id": zod.number(),
+  "evaluationId": zod.number().nullish(),
+  "specialistId": zod.number(),
+  "description": zod.string(),
+  "deadline": zod.string(),
+  "createdBy": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a task
+ */
+export const DeleteTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTaskResponse = zod.void()
+
+
+/**
+ * @summary Get dashboard summary metrics
  */
 export const GetDashboardSummaryResponse = zod.object({
   "averageTeamScore": zod.number().nullable(),
@@ -600,6 +649,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "totalEvaluations": zod.number(),
   "evaluationsThisMonth": zod.number(),
   "evaluationsLastMonth": zod.number(),
+  "totalMonthlyTarget": zod.number(),
   "bestSection": zod.string().nullable(),
   "bestSectionScore": zod.number().nullish(),
   "worstSection": zod.string().nullable(),
@@ -613,8 +663,13 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
- * @summary Get monthly average score trend (last 6 months)
+ * @summary Get monthly evaluation trend
  */
+export const GetMonthlyTrendQueryParams = zod.object({
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional()
+})
+
 export const GetMonthlyTrendResponseItem = zod.object({
   "month": zod.string(),
   "averageScore": zod.number().nullable(),
@@ -624,7 +679,7 @@ export const GetMonthlyTrendResponse = zod.array(GetMonthlyTrendResponseItem)
 
 
 /**
- * @summary Get recent evaluations for dashboard
+ * @summary Get recent evaluations
  */
 export const GetRecentEvaluationsQueryParams = zod.object({
   "limit": zod.coerce.number().optional()
@@ -649,7 +704,7 @@ export const GetRecentEvaluationsResponse = zod.array(GetRecentEvaluationsRespon
 
 
 /**
- * @summary Get specialists with average score below 70
+ * @summary Get specialists with low average score
  */
 export const GetLowPerformersResponseItem = zod.object({
   "id": zod.number(),
@@ -663,6 +718,7 @@ export const GetLowPerformersResponseItem = zod.object({
   "archived": zod.boolean(),
   "spiScore": zod.number().nullable(),
   "evaluationCount": zod.number(),
+  "monthlyTarget": zod.number().nullish(),
   "createdAt": zod.string().optional()
 })
 export const GetLowPerformersResponse = zod.array(GetLowPerformersResponseItem)

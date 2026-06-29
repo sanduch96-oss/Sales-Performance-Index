@@ -348,7 +348,7 @@ router.post("/evaluations/:id/audio", requireAuth, async (req, res): Promise<voi
 
   const [evaluation] = await db
     .update(evaluationsTable)
-    .set({ audioUrl: parsed.data.audioUrl })
+    .set({ audioUrl: (parsed.data as any).audioUrl })
     .where(eq(evaluationsTable.id, params.data.id))
     .returning();
 

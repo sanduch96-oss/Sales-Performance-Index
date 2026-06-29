@@ -5,6 +5,7 @@ import specialistsRouter from "./specialists";
 import evaluationsRouter from "./evaluations";
 import criteriaRouter from "./criteria";
 import dashboardRouter from "./dashboard";
+import tasksRouter from "./tasks";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(specialistsRouter);
 router.use(evaluationsRouter);
 router.use(criteriaRouter);
 router.use(dashboardRouter);
+router.use(tasksRouter);
 
 export default router;

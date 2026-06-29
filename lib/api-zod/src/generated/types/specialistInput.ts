@@ -15,4 +15,5 @@ export interface SpecialistInput {
   hireDate: string;
   manager?: string;
   status: SpecialistInputStatus;
+  monthlyTarget?: number;
 }

@@ -23,13 +23,18 @@ async function buildSectionResponse(sectionId: number) {
   return {
     id: section.id,
     name: section.name,
+    channel: section.channel,
     totalWeight: Math.round(totalWeight * 100) / 100,
     criteria: criteria.map((c) => ({ id: c.id, sectionId: c.sectionId, name: c.name, weight: c.weight })),
   };
 }
 
-router.get("/criteria-sections", requireAuth, async (_req, res): Promise<void> => {
-  const sections = await db.select().from(criteriaSectionsTable).orderBy(criteriaSectionsTable.displayOrder);
+router.get("/criteria-sections", requireAuth, async (req, res): Promise<void> => {
+  const channel = typeof req.query.channel === "string" ? req.query.channel : undefined;
+  const where = channel ? eq(criteriaSectionsTable.channel, channel) : undefined;
+  const sections = where
+    ? await db.select().from(criteriaSectionsTable).where(where).orderBy(criteriaSectionsTable.displayOrder)
+    : await db.select().from(criteriaSectionsTable).orderBy(criteriaSectionsTable.displayOrder);
 
   const result = await Promise.all(
     sections.map(async (section) => {
@@ -44,6 +49,7 @@ router.get("/criteria-sections", requireAuth, async (_req, res): Promise<void> =
       return {
         id: section.id,
         name: section.name,
+        channel: section.channel,
         totalWeight: Math.round(totalWeight * 100) / 100,
         criteria: criteria.map((c) => ({
           id: c.id,
@@ -68,8 +74,9 @@ router.post("/criteria-sections", requireAuth, async (req, res): Promise<void> =
   const maxOrderResult = await db.select({ displayOrder: criteriaSectionsTable.displayOrder }).from(criteriaSectionsTable).orderBy(criteriaSectionsTable.displayOrder);
   const maxOrder = maxOrderResult.length > 0 ? Math.max(...maxOrderResult.map(r => r.displayOrder)) + 1 : 0;
 
-  const [section] = await db.insert(criteriaSectionsTable).values({ name: parsed.data.name, displayOrder: maxOrder }).returning();
-  res.status(201).json({ id: section.id, name: section.name, totalWeight: 0, criteria: [] });
+  const channel = (parsed.data as any).channel ?? "call";
+  const [section] = await db.insert(criteriaSectionsTable).values({ name: parsed.data.name, channel, displayOrder: maxOrder }).returning();
+  res.status(201).json({ id: section.id, name: section.name, channel: section.channel, totalWeight: 0, criteria: [] });
 });
 
 router.patch("/criteria-sections/:id", requireAuth, async (req, res): Promise<void> => {

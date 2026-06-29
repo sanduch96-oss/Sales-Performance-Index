@@ -10,11 +10,9 @@ export interface HealthStatus {
 }
 
 export interface RegisterInput {
-  /** @minLength 3 */
   username: string;
-  /** @minLength 6 */
   password: string;
-  role: string;
+  role?: string;
 }
 
 export interface LoginInput {
@@ -54,6 +52,8 @@ export interface Specialist {
   /** @nullable */
   spiScore: number | null;
   evaluationCount: number;
+  /** @nullable */
+  monthlyTarget?: number | null;
   createdAt?: string;
 }
 
@@ -73,6 +73,7 @@ export interface SpecialistInput {
   hireDate: string;
   manager?: string;
   status: SpecialistInputStatus;
+  monthlyTarget?: number;
 }
 
 export type SpecialistUpdateStatus = typeof SpecialistUpdateStatus[keyof typeof SpecialistUpdateStatus];
@@ -91,6 +92,8 @@ export interface SpecialistUpdate {
   hireDate?: string;
   manager?: string;
   status?: SpecialistUpdateStatus;
+  /** @nullable */
+  monthlyTarget?: number | null;
 }
 
 export interface ArchiveInput {
@@ -277,6 +280,14 @@ export interface AudioAttachment {
   audioUrl: string;
 }
 
+export type CriteriaSectionChannel = typeof CriteriaSectionChannel[keyof typeof CriteriaSectionChannel];
+
+
+export const CriteriaSectionChannel = {
+  call: 'call',
+  chat: 'chat',
+} as const;
+
 export interface Criterion {
   id: number;
   sectionId: number;
@@ -287,16 +298,35 @@ export interface Criterion {
 export interface CriteriaSection {
   id: number;
   name: string;
+  channel: CriteriaSectionChannel;
   totalWeight: number;
   criteria: Criterion[];
 }
 
+export type CriteriaSectionCreateChannel = typeof CriteriaSectionCreateChannel[keyof typeof CriteriaSectionCreateChannel];
+
+
+export const CriteriaSectionCreateChannel = {
+  call: 'call',
+  chat: 'chat',
+} as const;
+
 export interface CriteriaSectionCreate {
   name: string;
+  channel: CriteriaSectionCreateChannel;
 }
+
+export type CriteriaSectionUpdateChannel = typeof CriteriaSectionUpdateChannel[keyof typeof CriteriaSectionUpdateChannel];
+
+
+export const CriteriaSectionUpdateChannel = {
+  call: 'call',
+  chat: 'chat',
+} as const;
 
 export interface CriteriaSectionUpdate {
   name?: string;
+  channel?: CriteriaSectionUpdateChannel;
 }
 
 export interface CriterionCreate {
@@ -310,6 +340,24 @@ export interface CriterionUpdate {
   weight?: number;
 }
 
+export interface Task {
+  id: number;
+  /** @nullable */
+  evaluationId?: number | null;
+  specialistId: number;
+  description: string;
+  deadline: string;
+  createdBy: number;
+  createdAt: string;
+}
+
+export interface TaskInput {
+  evaluationId?: number;
+  specialistId: number;
+  description: string;
+  deadline: string;
+}
+
 export interface DashboardSummary {
   /** @nullable */
   averageTeamScore: number | null;
@@ -318,6 +366,7 @@ export interface DashboardSummary {
   totalEvaluations: number;
   evaluationsThisMonth: number;
   evaluationsLastMonth: number;
+  totalMonthlyTarget: number;
   /** @nullable */
   bestSection: string | null;
   /** @nullable */
@@ -347,6 +396,32 @@ export const ListEvaluationsStatus = {
   draft: 'draft',
   finalized: 'finalized',
 } as const;
+
+export type AttachEvaluationAudioBody = {
+  audio?: Blob;
+};
+
+export type ListCriteriaSectionsParams = {
+channel?: ListCriteriaSectionsChannel;
+};
+
+export type ListCriteriaSectionsChannel = typeof ListCriteriaSectionsChannel[keyof typeof ListCriteriaSectionsChannel];
+
+
+export const ListCriteriaSectionsChannel = {
+  call: 'call',
+  chat: 'chat',
+} as const;
+
+export type ListTasksParams = {
+specialistId?: number;
+evaluationId?: number;
+};
+
+export type GetMonthlyTrendParams = {
+from?: string;
+to?: string;
+};
 
 export type GetRecentEvaluationsParams = {
 limit?: number;

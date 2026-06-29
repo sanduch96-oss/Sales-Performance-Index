@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, date, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,7 @@ export const specialistsTable = pgTable("specialists", {
   manager: text("manager"),
   status: text("status").notNull().default("active"),
   archived: boolean("archived").notNull().default(false),
+  monthlyTarget: integer("monthly_target"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

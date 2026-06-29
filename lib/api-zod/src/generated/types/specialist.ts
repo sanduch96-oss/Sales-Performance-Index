@@ -21,5 +21,7 @@ export interface Specialist {
   /** @nullable */
   spiScore: number | null;
   evaluationCount: number;
+  /** @nullable */
+  monthlyTarget?: number | null;
   createdAt?: string;
 }

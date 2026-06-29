@@ -20,6 +20,8 @@ tags:
     description: Evaluation criteria configuration
   - name: dashboard
     description: Dashboard analytics
+  - name: tasks
+    description: Specialist tasks
 
 paths:
   /healthz:
@@ -338,7 +340,7 @@ paths:
     delete:
       operationId: deleteEvaluation
       tags: [evaluations]
-      summary: Delete a draft evaluation
+      summary: Delete an evaluation
       parameters:
         - name: id
           in: path
@@ -350,7 +352,7 @@ paths:
           description: Deleted
 
   /evaluations/{id}/finalize:
-    patch:
+    post:
       operationId: finalizeEvaluation
       tags: [evaluations]
       summary: Finalize an evaluation
@@ -372,7 +374,7 @@ paths:
     post:
       operationId: attachEvaluationAudio
       tags: [evaluations]
-      summary: Attach audio URL for evaluation
+      summary: Attach audio to an evaluation
       parameters:
         - name: id
           in: path
@@ -382,26 +384,36 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: "#/components/schemas/AudioAttachment"
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
       responses:
         "200":
           description: Audio attached
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Evaluation"
+                $ref: "#/components/schemas/AudioAttachment"
 
-  # Criteria configuration (Settings)
+  # Criteria
   /criteria-sections:
     get:
       operationId: listCriteriaSections
       tags: [criteria]
       summary: List all criteria sections with criteria
+      parameters:
+        - name: channel
+          in: query
+          schema:
+            type: string
+            enum: [call, chat]
       responses:
         "200":
-          description: Criteria sections
+          description: List of criteria sections
           content:
             application/json:
               schema:
@@ -411,7 +423,7 @@ paths:
     post:
       operationId: createCriteriaSection
       tags: [criteria]
-      summary: Create a new criteria section
+      summary: Create a criteria section
       requestBody:
         required: true
         content:
@@ -468,7 +480,7 @@ paths:
     post:
       operationId: createCriterion
       tags: [criteria]
-      summary: Create a new criterion in a section
+      summary: Create a criterion
       requestBody:
         required: true
         content:
@@ -487,7 +499,7 @@ paths:
     patch:
       operationId: updateCriterion
       tags: [criteria]
-      summary: Update a criterion weight or name
+      summary: Update a criterion
       parameters:
         - name: id
           in: path
@@ -521,12 +533,69 @@ paths:
         "204":
           description: Deleted
 
+  # Tasks
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - name: specialistId
+          in: query
+          schema:
+            type: integer
+        - name: evaluationId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task for a specialist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   # Dashboard
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
-      summary: Get overall team dashboard summary
+      summary: Get dashboard summary metrics
       responses:
         "200":
           description: Dashboard summary
@@ -539,10 +608,19 @@ paths:
     get:
       operationId: getMonthlyTrend
       tags: [dashboard]
-      summary: Get monthly average score trend (last 6 months)
+      summary: Get monthly evaluation trend
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
       responses:
         "200":
-          description: Monthly trend
+          description: Monthly trend data
           content:
             application/json:
               schema:
@@ -554,7 +632,7 @@ paths:
     get:
       operationId: getRecentEvaluations
       tags: [dashboard]
-      summary: Get recent evaluations for dashboard
+      summary: Get recent evaluations
       parameters:
         - name: limit
           in: query
@@ -574,10 +652,10 @@ paths:
     get:
       operationId: getLowPerformers
       tags: [dashboard]
-      summary: Get specialists with average score below 70
+      summary: Get specialists with low average score
       responses:
         "200":
-          description: Low performers
+          description: Low performers list
           content:
             application/json:
               schema:
@@ -589,22 +667,19 @@ components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required: [status]
 
-    # Auth
     RegisterInput:
       type: object
-      required: [username, password, role]
+      required: [username, password]
       properties:
         username:
           type: string
-          minLength: 3
         password:
           type: string
-          minLength: 6
         role:
           type: string
 
@@ -663,6 +738,8 @@ components:
           type: ["number", "null"]
         evaluationCount:
           type: integer
+        monthlyTarget:
+          type: ["integer", "null"]
         createdAt:
           type: string
 
@@ -685,6 +762,8 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        monthlyTarget:
+          type: integer
 
     SpecialistUpdate:
       type: object
@@ -704,6 +783,8 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        monthlyTarget:
+          type: ["integer", "null"]
 
     ArchiveInput:
       type: object
@@ -891,12 +972,15 @@ components:
     # Criteria
     CriteriaSection:
       type: object
-      required: [id, name, totalWeight, criteria]
+      required: [id, name, channel, totalWeight, criteria]
       properties:
         id:
           type: integer
         name:
           type: string
+        channel:
+          type: string
+          enum: [call, chat]
         totalWeight:
           type: number
         criteria:
@@ -906,16 +990,22 @@ components:
 
     CriteriaSectionCreate:
       type: object
-      required: [name]
+      required: [name, channel]
       properties:
         name:
           type: string
+        channel:
+          type: string
+          enum: [call, chat]
 
     CriteriaSectionUpdate:
       type: object
       properties:
         name:
           type: string
+        channel:
+          type: string
+          enum: [call, chat]
 
     CriterionCreate:
       type: object
@@ -949,10 +1039,43 @@ components:
         weight:
           type: number
 
+    # Tasks
+    Task:
+      type: object
+      required: [id, specialistId, description, deadline, createdBy, createdAt]
+      properties:
+        id:
+          type: integer
+        evaluationId:
+          type: ["integer", "null"]
+        specialistId:
+          type: integer
+        description:
+          type: string
+        deadline:
+          type: string
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+
+    TaskInput:
+      type: object
+      required: [specialistId, description, deadline]
+      properties:
+        evaluationId:
+          type: integer
+        specialistId:
+          type: integer
+        description:
+          type: string
+        deadline:
+          type: string
+
     # Dashboard
     DashboardSummary:
       type: object
-      required: [averageTeamScore, totalEvaluations, evaluationsThisMonth, evaluationsLastMonth, bestSection, worstSection, sectionScores]
+      required: [averageTeamScore, totalEvaluations, evaluationsThisMonth, evaluationsLastMonth, bestSection, worstSection, sectionScores, totalMonthlyTarget]
       properties:
         averageTeamScore:
           type: ["number", "null"]
@@ -963,6 +1086,8 @@ components:
         evaluationsThisMonth:
           type: integer
         evaluationsLastMonth:
+          type: integer
+        totalMonthlyTarget:
           type: integer
         bestSection:
           type: ["string", "null"]

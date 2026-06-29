@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, specialistsTable, evaluationsTable, criteriaSectionsTable, criteriaTable, criterionScoresTable } from "@workspace/db";
+import { db, specialistsTable, evaluationsTable, criteriaSectionsTable, criteriaTable, criterionScoresTable, usersTable } from "@workspace/db";
 import { eq, and, avg, count, isNull, sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import {
   CreateSpecialistBody,
   UpdateSpecialistBody,
@@ -340,6 +341,50 @@ router.get("/specialists/:id/stats", requireAuth, async (req, res): Promise<void
     sectionScores: sections,
     radarData,
   });
+});
+
+router.post("/specialists/:id/generate-credentials", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(String(req.params.id));
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [specialist] = await db.select().from(specialistsTable).where(eq(specialistsTable.id, id));
+  if (!specialist) { res.status(404).json({ error: "Specialist not found" }); return; }
+
+  // Generate username from name, lowercase, no diacritics
+  const base = `${specialist.firstName}.${specialist.lastName}`
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, ".")
+    .replace(/[^a-z0-9.]/g, "");
+
+  // Generate random 8-char password
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let password = "";
+  for (let i = 0; i < 8; i++) password += chars[Math.floor(Math.random() * chars.length)];
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Check if user linked to this specialist already exists
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.specialistId, id));
+
+  let username: string;
+  if (existing) {
+    // Reset credentials for existing user
+    username = existing.username;
+    await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, existing.id));
+  } else {
+    // Find unique username
+    username = base;
+    let suffix = 1;
+    while (true) {
+      const [taken] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+      if (!taken) break;
+      username = `${base}${suffix++}`;
+    }
+    await db.insert(usersTable).values({ username, passwordHash, role: "user", specialistId: id });
+  }
+
+  res.json({ username, password });
 });
 
 export default router;

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, evaluationsTable, criterionScoresTable, specialistsTable, usersTable, criteriaTable, criteriaSectionsTable } from "@workspace/db";
+import { db, evaluationsTable, criterionScoresTable, specialistsTable, usersTable, criteriaTable, criteriaSectionsTable, notificationsTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import {
   CreateEvaluationBody,
@@ -108,6 +108,14 @@ router.get("/evaluations", requireAuth, async (req, res): Promise<void> => {
   const params = ListEvaluationsQueryParams.safeParse(req.query);
 
   const conditions = [];
+
+  // If user role, restrict to their specialist's evaluations only
+  const sessionUserId = (req.session as any).userId as number;
+  const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (currentUser?.role === "user" && currentUser.specialistId) {
+    conditions.push(eq(evaluationsTable.specialistId, currentUser.specialistId));
+  }
+
   if (params.success) {
     if (params.data.specialistId) {
       conditions.push(eq(evaluationsTable.specialistId, params.data.specialistId));
@@ -328,6 +336,18 @@ router.post("/evaluations/:id/finalize", requireAuth, async (req, res): Promise<
   if (!evaluation) {
     res.status(404).json({ error: "Evaluation not found" });
     return;
+  }
+
+  // Notify the specialist's linked user account
+  const [specialistUser] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.specialistId, evaluation.specialistId));
+  if (specialistUser) {
+    await db.insert(notificationsTable).values({
+      userId: specialistUser.id,
+      evaluationId: evaluation.id,
+    });
   }
 
   res.json(await buildEvaluationDetail(evaluation));

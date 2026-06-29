@@ -145,7 +145,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetMeResponse.parse({ id: user.id, username: user.username, role: user.role }));
+  res.json(GetMeResponse.parse({ id: user.id, username: user.username, role: user.role, specialistId: user.specialistId ?? null }));
 });
 
 export default router;

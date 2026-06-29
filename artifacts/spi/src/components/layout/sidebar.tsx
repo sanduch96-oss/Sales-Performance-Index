@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLogout } from "@workspace/api-client-react";
 import { useLanguage } from "@/contexts/language-context";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -20,13 +21,22 @@ export function Sidebar() {
   const { data: user } = useGetMe();
   const { t } = useLanguage();
 
-  const navigation = [
+  const isSpecialist = user?.role === "user";
+
+  const adminNavigation = [
     { name: t.nav.dashboard, href: "/dashboard", icon: LayoutDashboard },
     { name: t.nav.specialists, href: "/specialists", icon: Users },
     { name: t.nav.evaluations, href: "/evaluations", icon: ClipboardList },
     { name: t.nav.reports, href: "/reports", icon: BarChart2 },
     { name: t.nav.settings, href: "/settings", icon: Settings },
   ];
+
+  const specialistNavigation = [
+    { name: t.nav.dashboard, href: "/dashboard", icon: LayoutDashboard },
+    { name: t.nav.myEvaluations, href: "/evaluations", icon: ClipboardList },
+  ];
+
+  const navigation = isSpecialist ? specialistNavigation : adminNavigation;
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -61,9 +71,12 @@ export function Sidebar() {
         })}
       </nav>
       <div className="p-4 border-t border-sidebar-border">
-        <div className="mb-4 px-3">
-          <p className="text-sm font-medium truncate">{user?.username}</p>
-          <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
+        <div className="mb-3 px-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium truncate">{user?.username}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
+          </div>
+          {isSpecialist && <NotificationsBell />}
         </div>
         <Button
           variant="ghost"
@@ -84,16 +97,19 @@ export function Sidebar() {
       </div>
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-background">
         <img src="/logo2.png" alt="SPI Logo" className="h-8 w-auto" />
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <NavContent />
-          </SheetContent>
-        </Sheet>
+        <div className="flex items-center gap-2">
+          {isSpecialist && <NotificationsBell />}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64">
+              <NavContent />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </>
   );

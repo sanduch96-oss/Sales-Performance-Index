@@ -63,7 +63,8 @@ export const LogoutResponse = zod.unknown()
 export const GetMeResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
-  "role": zod.string()
+  "role": zod.string(),
+  "specialistId": zod.number().nullable().optional()
 })
 
 

@@ -14,11 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, ArrowLeft, ChevronRight, ClipboardList, Target } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight, ClipboardList, Target, KeyRound, Copy, Check } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { useLanguage } from "@/contexts/language-context";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { customFetch } from "@workspace/api-client-react";
 
 export default function SpecialistProfile() {
   const { id } = useParams();
@@ -34,6 +35,32 @@ export default function SpecialistProfile() {
 
   const [isTargetDialogOpen, setIsTargetDialogOpen] = useState(false);
   const [targetValue, setTargetValue] = useState("");
+
+  const [isCredDialogOpen, setIsCredDialogOpen] = useState(false);
+  const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [copiedField, setCopiedField] = useState<"username" | "password" | null>(null);
+
+  const generateCredentials = useMutation({
+    mutationFn: () =>
+      customFetch<{ username: string; password: string }>(
+        `/api/specialists/${specialistId}/generate-credentials`,
+        { method: "POST" },
+      ),
+    onSuccess: (data) => {
+      setCredentials(data);
+      setIsCredDialogOpen(true);
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: t.newEval.saveError });
+    },
+  });
+
+  const copyToClipboard = (text: string, field: "username" | "password") => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  };
 
   function getScoreBadge(score: number | null) {
     if (score === null) return null;
@@ -60,7 +87,15 @@ export default function SpecialistProfile() {
           <h2 className="text-3xl font-bold tracking-tight">{specialist.firstName} {specialist.lastName}</h2>
           <p className="text-muted-foreground">{specialist.position} • {specialist.department}</p>
         </div>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-4 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => generateCredentials.mutate()}
+            disabled={generateCredentials.isPending}
+          >
+            {generateCredentials.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+            {t.profile.generateLogin}
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
@@ -197,6 +232,8 @@ export default function SpecialistProfile() {
           )}
         </CardContent>
       </Card>
+
+      {/* Monthly target dialog */}
       <Dialog open={isTargetDialogOpen} onOpenChange={setIsTargetDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -234,6 +271,49 @@ export default function SpecialistProfile() {
               {updateSpecialist.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t.common.save}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials dialog */}
+      <Dialog open={isCredDialogOpen} onOpenChange={setIsCredDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.profile.credentialsTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t.profile.credentialsDesc}</p>
+          {credentials && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <Label>{t.profile.credentialsUser}</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.username} className="font-mono" />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(credentials.username, "username")}
+                  >
+                    {copiedField === "username" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>{t.profile.credentialsPass}</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.password} className="font-mono" />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(credentials.password, "password")}
+                  >
+                    {copiedField === "password" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setIsCredDialogOpen(false)}>{t.common.close ?? "OK"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

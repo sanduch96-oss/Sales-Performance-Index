@@ -409,11 +409,13 @@ export default function NewEvaluation() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full overflow-hidden"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {audioFile ? audioFile.name : t.newEval.selectAudio}
+                      <Upload className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="truncate min-w-0">
+                        {audioFile ? audioFile.name : t.newEval.selectAudio}
+                      </span>
                     </Button>
                   </div>
 

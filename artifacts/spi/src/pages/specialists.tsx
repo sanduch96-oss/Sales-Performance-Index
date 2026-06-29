@@ -10,12 +10,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Archive, Trash2, Eye, CalendarIcon } from "lucide-react";
+import { Loader2, Plus, Archive, Trash2, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -82,6 +81,8 @@ export default function Specialists() {
     });
   };
 
+  const archivedCount = archivedSpecialists?.length ?? 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -92,47 +93,61 @@ export default function Specialists() {
         <div className="flex gap-2">
           <Drawer>
             <DrawerTrigger asChild>
-              <Button variant="outline"><Archive className="mr-2 h-4 w-4" /> Arhivă</Button>
+              <Button variant="outline" className="relative">
+                <Archive className="mr-2 h-4 w-4" /> Arhivă
+                {archivedCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold w-5 h-5">
+                    {archivedCount}
+                  </span>
+                )}
+              </Button>
             </DrawerTrigger>
             <DrawerContent className="h-[80vh]">
               <DrawerHeader>
-                <DrawerTitle>Specialiști arhivați</DrawerTitle>
+                <DrawerTitle>Specialiști arhivați ({archivedCount})</DrawerTitle>
               </DrawerHeader>
-              <div className="p-4 overflow-y-auto space-y-4">
+              <div className="p-4 overflow-y-auto">
                 {isLoadingArchived ? (
                   <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
                 ) : archivedSpecialists?.length === 0 ? (
-                  <p className="text-center text-muted-foreground">Nu există specialiști arhivați.</p>
+                  <p className="text-center text-muted-foreground py-8">Nu există specialiști arhivați.</p>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="divide-y divide-border border rounded-lg overflow-hidden">
                     {archivedSpecialists?.map(spec => (
-                      <Card key={spec.id} className="opacity-75">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">{spec.firstName} {spec.lastName}</CardTitle>
-                          <CardDescription>{spec.position}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex justify-between items-center">
-                          <Badge variant="secondary">Arhivat</Badge>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleArchive(spec.id, false)}>Dezarhivează</Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="destructive"><Trash2 className="h-4 w-4" /></Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Ștergeți definitiv?</AlertDialogTitle>
-                                  <AlertDialogDescription>Această acțiune nu poate fi anulată.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Anulare</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(spec.id)} className="bg-destructive text-destructive-foreground">Șterge</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                      <div key={spec.id} className="flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium text-sm">{spec.firstName} {spec.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{spec.position} • {spec.department}</p>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <Badge variant="secondary" className="text-xs">Arhivat</Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          <Link href={`/specialists/${spec.id}`}>
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4 mr-1" /> Profil
+                            </Button>
+                          </Link>
+                          <Button size="sm" variant="outline" onClick={() => handleArchive(spec.id, false)}>
+                            Dezarhivează
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Ștergeți definitiv?</AlertDialogTitle>
+                                <AlertDialogDescription>Această acțiune nu poate fi anulată.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Anulare</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(spec.id)} className="bg-destructive text-destructive-foreground">Șterge</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -200,47 +215,49 @@ export default function Specialists() {
       {isLoadingActive ? (
         <div className="flex h-40 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : activeSpecialists?.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border rounded-lg">
           <p>Nu aveți niciun specialist activ.</p>
-        </Card>
+        </div>
       ) : (
-        <div className="flex overflow-x-auto pb-4 gap-4 snap-x">
-          {activeSpecialists?.map(spec => (
-            <Card key={spec.id} className="min-w-[300px] max-w-[350px] snap-center flex-shrink-0 flex flex-col">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{spec.firstName} {spec.lastName}</CardTitle>
-                    <CardDescription>{spec.position}</CardDescription>
-                  </div>
+        <div className="border rounded-lg overflow-hidden">
+          <div className="hidden md:grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <span>Nume</span>
+            <span>Funcție / Departament</span>
+            <span>Scor SPI</span>
+            <span>Evaluări</span>
+            <span>Status</span>
+            <span></span>
+          </div>
+          <div className="divide-y divide-border">
+            {activeSpecialists?.map(spec => (
+              <div key={spec.id} className="grid grid-cols-1 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 items-center px-4 py-3 hover:bg-muted/30 transition-colors">
+                <div className="font-medium">{spec.firstName} {spec.lastName}</div>
+                <div className="text-sm text-muted-foreground">
+                  <span>{spec.position}</span>
+                  <span className="mx-1">•</span>
+                  <span>{spec.department}</span>
+                </div>
+                <div className="font-bold text-primary">
+                  {spec.spiScore !== null ? `${spec.spiScore}/100` : <span className="text-muted-foreground font-normal">N/A</span>}
+                </div>
+                <div className="text-sm">{spec.evaluationCount}</div>
+                <div>
                   <Badge variant={spec.status === "active" ? "default" : "secondary"}>
                     {spec.status === "active" ? "Activ" : "Inactiv"}
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="grid grid-cols-2 gap-4 my-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Scor SPI</p>
-                    <p className="text-2xl font-bold">{spec.spiScore !== null ? `${spec.spiScore}/100` : "N/A"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Evaluări</p>
-                    <p className="text-2xl font-bold">{spec.evaluationCount}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-border">
-                  <Link href={`/specialists/${spec.id}`} className="flex-1">
-                    <Button variant="default" className="w-full" size="sm">
-                      <Eye className="mr-2 h-4 w-4" /> Profil
+                <div className="flex gap-2">
+                  <Link href={`/specialists/${spec.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-1" /> Profil
                     </Button>
                   </Link>
-                  <Button variant="outline" size="sm" onClick={() => handleArchive(spec.id, true)}>
+                  <Button variant="outline" size="sm" onClick={() => handleArchive(spec.id, true)} title="Arhivează">
                     <Archive className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10">
+                      <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" title="Șterge">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
@@ -256,9 +273,9 @@ export default function Specialists() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

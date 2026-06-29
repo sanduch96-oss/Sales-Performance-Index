@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { 
   useListSpecialists, 
   useListCriteriaSections, 
@@ -24,7 +24,10 @@ type ScoreLevel = "good" | "medium" | "poor";
 
 export default function NewEvaluation() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { toast } = useToast();
+
+  const prefilledSpecialistId = new URLSearchParams(search).get("specialistId") ?? "";
   
   const { data: me } = useGetMe();
   const { data: specialists, isLoading: isLoadingSpec } = useListSpecialists({ archived: false });
@@ -36,7 +39,7 @@ export default function NewEvaluation() {
   const attachAudio = useAttachEvaluationAudio();
   
   const [formData, setFormData] = useState({
-    specialistId: "",
+    specialistId: prefilledSpecialistId,
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().substring(0, 5),
     clientName: "",

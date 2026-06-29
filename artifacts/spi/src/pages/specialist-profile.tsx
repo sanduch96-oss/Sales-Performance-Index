@@ -9,7 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight, ClipboardList } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 
 function getScoreBadge(score: number | null) {
@@ -37,7 +37,7 @@ export default function SpecialistProfile() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Link href="/specialists">
           <Button variant="outline" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
@@ -45,9 +45,16 @@ export default function SpecialistProfile() {
           <h2 className="text-3xl font-bold tracking-tight">{specialist.firstName} {specialist.lastName}</h2>
           <p className="text-muted-foreground">{specialist.position} • {specialist.department}</p>
         </div>
-        <div className="ml-auto text-right">
-          <p className="text-sm text-muted-foreground uppercase font-semibold">Scor SPI</p>
-          <p className="text-4xl font-bold text-primary">{specialist.spiScore !== null ? `${specialist.spiScore}/100` : "N/A"}</p>
+        <div className="ml-auto flex items-center gap-4">
+          <Link href={`/evaluations/new?specialistId=${specialistId}`}>
+            <Button>
+              <ClipboardList className="mr-2 h-4 w-4" /> Evaluează
+            </Button>
+          </Link>
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground uppercase font-semibold">Scor SPI</p>
+            <p className="text-4xl font-bold text-primary">{specialist.spiScore !== null ? `${specialist.spiScore}/100` : "N/A"}</p>
+          </div>
         </div>
       </div>
 

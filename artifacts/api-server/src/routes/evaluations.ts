@@ -237,13 +237,15 @@ router.patch("/evaluations/:id", requireAuth, async (req, res): Promise<void> =>
     return;
   }
 
-  // Update basic fields
+  // Update basic fields (only if there are fields to update beyond criteriaScores)
   const { criteriaScores, ...basicFields } = parsed.data;
 
-  await db
-    .update(evaluationsTable)
-    .set(basicFields)
-    .where(eq(evaluationsTable.id, params.data.id));
+  if (Object.keys(basicFields).length > 0) {
+    await db
+      .update(evaluationsTable)
+      .set(basicFields)
+      .where(eq(evaluationsTable.id, params.data.id));
+  }
 
   // Update criterion scores if provided
   if (criteriaScores && criteriaScores.length > 0) {

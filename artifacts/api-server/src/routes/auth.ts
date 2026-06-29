@@ -93,6 +93,42 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   });
 });
 
+router.post("/auth/change-password", async (req, res): Promise<void> => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword || newPassword.length < 4) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.session.userId));
+
+  if (!user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    res.status(400).json({ error: "wrong_current" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, user.id));
+
+  req.session.destroy(() => {
+    res.json({ ok: true });
+  });
+});
+
 router.get("/auth/me", async (req, res): Promise<void> => {
   if (!req.session.userId) {
     res.status(401).json({ error: "Unauthorized" });

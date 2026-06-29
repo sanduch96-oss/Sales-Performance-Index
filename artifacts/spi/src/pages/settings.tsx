@@ -16,7 +16,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage, type Language } from "@/contexts/language-context";
-import { Loader2, Plus, Save, Trash2, Globe, ClipboardList, ChevronDown } from "lucide-react";
+import { Loader2, Plus, Save, Trash2, Globe, ClipboardList, ChevronDown, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +31,13 @@ export default function Settings() {
   const { toast } = useToast();
   const { language, setLanguage, t } = useLanguage();
 
-  const [openPanel, setOpenPanel] = useState<"language" | "criteria" | null>(null);
+  const [openPanel, setOpenPanel] = useState<"language" | "criteria" | "security" | null>(null);
   const [criteriaChannel, setCriteriaChannel] = useState<"call" | "chat">("call");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const { data: sections, isLoading } = useListCriteriaSections({ channel: criteriaChannel });
   const createSection = useCreateCriteriaSection();
@@ -49,8 +54,47 @@ export default function Settings() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListCriteriaSectionsQueryKey() });
 
-  const togglePanel = (panel: "language" | "criteria") =>
+  const togglePanel = (panel: "language" | "criteria" | "security") =>
     setOpenPanel(prev => (prev === panel ? null : panel));
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 4) {
+      toast({ variant: "destructive", title: t.settings.passwordMin });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ variant: "destructive", title: t.settings.passwordMismatch });
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.error === "wrong_current") {
+          toast({ variant: "destructive", title: t.settings.passwordWrong });
+        } else {
+          toast({ variant: "destructive", title: t.settings.passwordMin });
+        }
+        return;
+      }
+      toast({ title: t.settings.passwordChanged });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    } catch {
+      toast({ variant: "destructive", title: t.settings.passwordMin });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   const handleAddSection = async () => {
     const name = newSectionName.trim();
@@ -175,6 +219,71 @@ export default function Settings() {
                     {opt.label}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Security panel ── */}
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <button
+            onClick={() => togglePanel("security")}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/40 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-primary shrink-0" />
+              <div>
+                <p className="font-semibold text-base">{t.settings.security}</p>
+                <p className="text-sm text-muted-foreground">{t.settings.securityDesc}</p>
+              </div>
+            </div>
+            <ChevronDown
+              className={cn(
+                "h-5 w-5 text-muted-foreground transition-transform duration-200 shrink-0",
+                openPanel === "security" && "rotate-180"
+              )}
+            />
+          </button>
+
+          {openPanel === "security" && (
+            <div className="px-5 pb-5 pt-4 border-t bg-muted/10">
+              <div className="max-w-sm space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.settings.currentPassword}</Label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.settings.newPassword}</Label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t.settings.confirmPassword}</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    onKeyDown={e => e.key === "Enter" && handleChangePassword()}
+                  />
+                </div>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                  className="w-full"
+                >
+                  {isChangingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {t.common.save}
+                </Button>
               </div>
             </div>
           )}

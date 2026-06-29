@@ -36,9 +36,8 @@ export function Sidebar() {
 
   const NavContent = () => (
     <div className="flex h-full flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
-      <div className="p-6">
-        <h1 className="text-xl font-bold tracking-tight text-primary">SPI</h1>
-        <p className="text-xs text-muted-foreground">Sales Performance Index</p>
+      <div className="p-4 flex justify-center">
+        <img src="/logo2.png" alt="SPI Logo" className="h-12 w-auto" />
       </div>
       <nav className="flex-1 space-y-1 px-4">
         {navigation.map((item) => {
@@ -82,7 +81,7 @@ export function Sidebar() {
         <NavContent />
       </div>
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-background">
-        <h1 className="text-xl font-bold tracking-tight text-primary">SPI</h1>
+        <img src="/logo2.png" alt="SPI Logo" className="h-8 w-auto" />
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon">

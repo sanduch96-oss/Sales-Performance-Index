@@ -39,7 +39,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
-            <img src="/logo.png" alt="SPI Logo" className="h-20 w-auto" />
+            <img src="/logo.png" alt="SPI Logo" className="h-32 w-auto" />
           </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>

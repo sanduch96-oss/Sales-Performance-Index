@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, TrendingUp, TrendingDown, Minus, Loader2, Pencil, Check } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -16,6 +18,8 @@ function getScoreBadge(score: number | null) {
   return <Badge variant="destructive">Slab</Badge>;
 }
 
+const MONTHLY_TARGET_KEY = "spi_monthly_eval_target";
+
 export default function Dashboard() {
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: trend, isLoading: isLoadingTrend } = useGetMonthlyTrend();
@@ -23,6 +27,13 @@ export default function Dashboard() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  const [monthlyTarget, setMonthlyTarget] = useState<number>(() => {
+    const saved = localStorage.getItem(MONTHLY_TARGET_KEY);
+    return saved ? parseInt(saved) : 20;
+  });
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [targetInput, setTargetInput] = useState("");
 
   const { data: allEvaluations, isLoading: isLoadingAllEvals } = useListEvaluations({ dateFrom, dateTo });
   const { data: lowPerformers, isLoading: isLoadingLowPerformers } = useGetLowPerformers();
@@ -74,42 +85,104 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total evaluări</CardTitle>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-4 w-4">
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Toate evaluările</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <input type="date" className="flex-1 px-3 py-2 border rounded-md" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-                    <input type="date" className="flex-1 px-3 py-2 border rounded-md" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-                  </div>
-                  {isLoadingAllEvals ? (
-                    <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                  ) : (
-                    <div className="space-y-2">
-                      {allEvaluations?.map(evalItem => (
-                        <div key={evalItem.id} className="flex justify-between items-center p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{evalItem.specialistName}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(evalItem.date).toLocaleDateString()} • {evalItem.evaluationType}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold">{evalItem.totalScore}/100</span>
-                            {getScoreBadge(evalItem.totalScore)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            <div className="flex items-center gap-1">
+              {isEditingTarget ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-6 w-16 text-xs px-2"
+                    value={targetInput}
+                    onChange={e => setTargetInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        const val = parseInt(targetInput);
+                        if (val > 0) {
+                          setMonthlyTarget(val);
+                          localStorage.setItem(MONTHLY_TARGET_KEY, String(val));
+                        }
+                        setIsEditingTarget(false);
+                      }
+                      if (e.key === "Escape") setIsEditingTarget(false);
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      const val = parseInt(targetInput);
+                      if (val > 0) {
+                        setMonthlyTarget(val);
+                        localStorage.setItem(MONTHLY_TARGET_KEY, String(val));
+                      }
+                      setIsEditingTarget(false);
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  title="Editează ținta lunară"
+                  onClick={() => {
+                    setTargetInput(String(monthlyTarget));
+                    setIsEditingTarget(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              )}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Toate evaluările</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex gap-4">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">De când</Label>
+                        <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Până când</Label>
+                        <input type="date" className="w-full px-3 py-2 border rounded-md text-sm" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                      </div>
+                    </div>
+                    {isLoadingAllEvals ? (
+                      <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                    ) : (
+                      <div className="space-y-2">
+                        {allEvaluations?.map(evalItem => (
+                          <div key={evalItem.id} className="flex justify-between items-center p-3 border rounded-lg">
+                            <div>
+                              <p className="font-medium">{evalItem.specialistName}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(evalItem.date).toLocaleDateString()} • {evalItem.evaluationType}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold">{evalItem.totalScore}/100</span>
+                              {getScoreBadge(evalItem.totalScore)}
+                            </div>
+                          </div>
+                        ))}
+                        {!allEvaluations?.length && (
+                          <p className="text-center text-muted-foreground py-4">Nu există evaluări în intervalul selectat.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalEvaluations}</div>
@@ -122,6 +195,19 @@ export default function Dashboard() {
                 <><Minus className="mr-1 h-3 w-3" /> Fără schimbări</>
               )}
             </p>
+            <div className="mt-3 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Progres lunar</span>
+                <span>{summary.evaluationsThisMonth} / {monthlyTarget}</span>
+              </div>
+              <Progress
+                value={Math.min((summary.evaluationsThisMonth / monthlyTarget) * 100, 100)}
+                className="h-2"
+              />
+              <p className="text-xs text-muted-foreground">
+                Țintă: {monthlyTarget} evaluări/lună
+              </p>
+            </div>
           </CardContent>
         </Card>
 

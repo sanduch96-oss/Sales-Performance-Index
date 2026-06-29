@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Sales Performance Index"
+version = "1.0.0"
+id = "artifacts/spi"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19816
+
+[services.development]
+run = "pnpm --filter @workspace/spi run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/spi", "run", "build" ]
+publicDir = "artifacts/spi/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19816"
+BASE_PATH = "/"

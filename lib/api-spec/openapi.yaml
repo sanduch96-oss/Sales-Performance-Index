@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Sales Performance Index API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: specialists
+    description: Specialist management
+  - name: evaluations
+    description: Evaluation management
+  - name: criteria
+    description: Evaluation criteria configuration
+  - name: dashboard
+    description: Dashboard analytics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +34,495 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  # Specialists
+  /specialists:
+    get:
+      operationId: listSpecialists
+      tags: [specialists]
+      summary: List active specialists
+      parameters:
+        - name: archived
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of specialists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Specialist"
+    post:
+      operationId: createSpecialist
+      tags: [specialists]
+      summary: Create a specialist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpecialistInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Specialist"
+
+  /specialists/{id}:
+    get:
+      operationId: getSpecialist
+      tags: [specialists]
+      summary: Get a specialist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Specialist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Specialist"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateSpecialist
+      tags: [specialists]
+      summary: Update a specialist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpecialistUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Specialist"
+    delete:
+      operationId: deleteSpecialist
+      tags: [specialists]
+      summary: Delete a specialist permanently
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /specialists/{id}/archive:
+    patch:
+      operationId: archiveSpecialist
+      tags: [specialists]
+      summary: Archive or unarchive a specialist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Specialist"
+
+  /specialists/{id}/stats:
+    get:
+      operationId: getSpecialistStats
+      tags: [specialists]
+      summary: Get performance stats for a specialist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Specialist stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpecialistStats"
+
+  # Evaluations
+  /evaluations:
+    get:
+      operationId: listEvaluations
+      tags: [evaluations]
+      summary: List evaluations
+      parameters:
+        - name: specialistId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, finalized]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of evaluations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Evaluation"
+    post:
+      operationId: createEvaluation
+      tags: [evaluations]
+      summary: Create a new evaluation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+
+  /evaluations/{id}:
+    get:
+      operationId: getEvaluation
+      tags: [evaluations]
+      summary: Get an evaluation with all criteria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Evaluation detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateEvaluation
+      tags: [evaluations]
+      summary: Update an evaluation (draft only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluationUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDetail"
+    delete:
+      operationId: deleteEvaluation
+      tags: [evaluations]
+      summary: Delete a draft evaluation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /evaluations/{id}/finalize:
+    patch:
+      operationId: finalizeEvaluation
+      tags: [evaluations]
+      summary: Finalize an evaluation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationDetail"
+
+  /evaluations/{id}/audio:
+    post:
+      operationId: attachEvaluationAudio
+      tags: [evaluations]
+      summary: Attach audio URL for evaluation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AudioAttachment"
+      responses:
+        "200":
+          description: Audio attached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+
+  # Criteria configuration (Settings)
+  /criteria-sections:
+    get:
+      operationId: listCriteriaSections
+      tags: [criteria]
+      summary: List all criteria sections with criteria
+      responses:
+        "200":
+          description: Criteria sections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CriteriaSection"
+
+  /criteria-sections/{id}:
+    patch:
+      operationId: updateCriteriaSection
+      tags: [criteria]
+      summary: Update a criteria section
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriteriaSectionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaSection"
+
+  /criteria/{id}:
+    patch:
+      operationId: updateCriterion
+      tags: [criteria]
+      summary: Update a criterion weight or name
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriterionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Criterion"
+
+  # Dashboard
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get overall team dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/monthly-trend:
+    get:
+      operationId: getMonthlyTrend
+      tags: [dashboard]
+      summary: Get monthly average score trend (last 6 months)
+      responses:
+        "200":
+          description: Monthly trend
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyTrendPoint"
+
+  /dashboard/recent-evaluations:
+    get:
+      operationId: getRecentEvaluations
+      tags: [dashboard]
+      summary: Get recent evaluations for dashboard
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent evaluations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Evaluation"
+
+  /dashboard/low-performers:
+    get:
+      operationId: getLowPerformers
+      tags: [dashboard]
+      summary: Get specialists with average score below 70
+      responses:
+        "200":
+          description: Low performers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Specialist"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +530,402 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    # Auth
+    RegisterInput:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 6
+        role:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+
+    # Specialists
+    Specialist:
+      type: object
+      required: [id, firstName, lastName, position, department, hireDate, status, archived, spiScore, evaluationCount]
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        hireDate:
+          type: string
+        manager:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive]
+        archived:
+          type: boolean
+        spiScore:
+          type: ["number", "null"]
+        evaluationCount:
+          type: integer
+        createdAt:
+          type: string
+
+    SpecialistInput:
+      type: object
+      required: [firstName, lastName, position, department, hireDate, status]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        hireDate:
+          type: string
+        manager:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    SpecialistUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        position:
+          type: string
+        department:
+          type: string
+        hireDate:
+          type: string
+        manager:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    ArchiveInput:
+      type: object
+      required: [archived]
+      properties:
+        archived:
+          type: boolean
+
+    SpecialistStats:
+      type: object
+      required: [specialistId, averageScore, evaluationCount, bestSection, worstSection, monthlyTrend, sectionScores, radarData]
+      properties:
+        specialistId:
+          type: integer
+        averageScore:
+          type: ["number", "null"]
+        evaluationCount:
+          type: integer
+        bestSection:
+          type: ["string", "null"]
+        worstSection:
+          type: ["string", "null"]
+        monthlyTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyTrendPoint"
+        sectionScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionScore"
+        radarData:
+          type: array
+          items:
+            $ref: "#/components/schemas/RadarPoint"
+
+    # Evaluations
+    Evaluation:
+      type: object
+      required: [id, specialistId, specialistName, evaluatorId, evaluatorName, date, time, clientName, evaluationType, status, totalScore]
+      properties:
+        id:
+          type: integer
+        specialistId:
+          type: integer
+        specialistName:
+          type: string
+        evaluatorId:
+          type: integer
+        evaluatorName:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        clientName:
+          type: string
+        evaluationType:
+          type: string
+          enum: [call, meeting, chat]
+        status:
+          type: string
+          enum: [draft, finalized]
+        totalScore:
+          type: ["number", "null"]
+        audioUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    EvaluationInput:
+      type: object
+      required: [specialistId, date, time, clientName, evaluationType]
+      properties:
+        specialistId:
+          type: integer
+        date:
+          type: string
+        time:
+          type: string
+        clientName:
+          type: string
+        evaluationType:
+          type: string
+          enum: [call, meeting, chat]
+
+    EvaluationUpdate:
+      type: object
+      properties:
+        date:
+          type: string
+        time:
+          type: string
+        clientName:
+          type: string
+        evaluationType:
+          type: string
+          enum: [call, meeting, chat]
+        criteriaScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriterionScoreInput"
+
+    EvaluationDetail:
+      type: object
+      required: [id, specialistId, specialistName, evaluatorId, evaluatorName, date, time, clientName, evaluationType, status, totalScore, sectionScores, criteriaScores]
+      properties:
+        id:
+          type: integer
+        specialistId:
+          type: integer
+        specialistName:
+          type: string
+        evaluatorId:
+          type: integer
+        evaluatorName:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        clientName:
+          type: string
+        evaluationType:
+          type: string
+          enum: [call, meeting, chat]
+        status:
+          type: string
+          enum: [draft, finalized]
+        totalScore:
+          type: ["number", "null"]
+        audioUrl:
+          type: ["string", "null"]
+        sectionScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionScore"
+        criteriaScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriterionScore"
+        createdAt:
+          type: string
+
+    AudioAttachment:
+      type: object
+      required: [audioUrl]
+      properties:
+        audioUrl:
+          type: string
+
+    CriterionScoreInput:
+      type: object
+      required: [criterionId, level]
+      properties:
+        criterionId:
+          type: integer
+        level:
+          type: string
+          enum: [good, medium, poor]
+        comment:
+          type: string
+
+    CriterionScore:
+      type: object
+      required: [id, criterionId, criterionName, sectionName, weight, level, score]
+      properties:
+        id:
+          type: integer
+        criterionId:
+          type: integer
+        criterionName:
+          type: string
+        sectionName:
+          type: string
+        weight:
+          type: number
+        level:
+          type: string
+          enum: [good, medium, poor]
+        score:
+          type: number
+        comment:
+          type: ["string", "null"]
+
+    # Criteria
+    CriteriaSection:
+      type: object
+      required: [id, name, totalWeight, criteria]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        totalWeight:
+          type: number
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/Criterion"
+
+    CriteriaSectionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Criterion:
+      type: object
+      required: [id, sectionId, name, weight]
+      properties:
+        id:
+          type: integer
+        sectionId:
+          type: integer
+        name:
+          type: string
+        weight:
+          type: number
+
+    CriterionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        weight:
+          type: number
+
+    # Dashboard
+    DashboardSummary:
+      type: object
+      required: [averageTeamScore, totalEvaluations, evaluationsThisMonth, evaluationsLastMonth, bestSection, worstSection, sectionScores]
+      properties:
+        averageTeamScore:
+          type: ["number", "null"]
+        averageScoreLastMonth:
+          type: ["number", "null"]
+        totalEvaluations:
+          type: integer
+        evaluationsThisMonth:
+          type: integer
+        evaluationsLastMonth:
+          type: integer
+        bestSection:
+          type: ["string", "null"]
+        bestSectionScore:
+          type: ["number", "null"]
+        worstSection:
+          type: ["string", "null"]
+        worstSectionScore:
+          type: ["number", "null"]
+        sectionScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionScore"
+
+    MonthlyTrendPoint:
+      type: object
+      required: [month, averageScore, count]
+      properties:
+        month:
+          type: string
+        averageScore:
+          type: ["number", "null"]
+        count:
+          type: integer
+
+    SectionScore:
+      type: object
+      required: [sectionId, sectionName, averageScore]
+      properties:
+        sectionId:
+          type: integer
+        sectionName:
+          type: string
+        averageScore:
+          type: ["number", "null"]
+
+    RadarPoint:
+      type: object
+      required: [subject, score, fullMark]
+      properties:
+        subject:
+          type: string
+        score:
+          type: number
+        fullMark:
+          type: number

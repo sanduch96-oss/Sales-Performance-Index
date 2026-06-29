@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { 
   useListSpecialists, 
@@ -7,7 +7,10 @@ import {
   useUpdateEvaluation,
   useFinalizeEvaluation,
   useAttachEvaluationAudio,
-  useGetMe
+  useGetMe,
+  useGetEvaluation,
+  getGetEvaluationQueryKey,
+  getListEvaluationsQueryKey
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +22,7 @@ import { Loader2, ArrowLeft, Upload, Check, X, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ScoreLevel = "good" | "medium" | "poor";
 
@@ -26,12 +30,20 @@ export default function NewEvaluation() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const prefilledSpecialistId = new URLSearchParams(search).get("specialistId") ?? "";
+  const params = new URLSearchParams(search);
+  const prefilledSpecialistId = params.get("specialistId") ?? "";
+  const editIdParam = params.get("editId");
+  const editId = editIdParam ? parseInt(editIdParam) : null;
+  const isEditMode = editId !== null && !isNaN(editId);
   
   const { data: me } = useGetMe();
   const { data: specialists, isLoading: isLoadingSpec } = useListSpecialists({ archived: false });
   const { data: sections, isLoading: isLoadingSec } = useListCriteriaSections();
+  const { data: existingEval, isLoading: isLoadingExisting } = useGetEvaluation(editId ?? 0, {
+    query: { enabled: isEditMode, queryKey: getGetEvaluationQueryKey(editId ?? 0) }
+  });
   
   const createEvaluation = useCreateEvaluation();
   const updateEvaluation = useUpdateEvaluation();
@@ -50,6 +62,28 @@ export default function NewEvaluation() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode && existingEval && !prefilled) {
+      setFormData({
+        specialistId: existingEval.specialistId.toString(),
+        date: existingEval.date,
+        time: existingEval.time,
+        clientName: existingEval.clientName,
+        evaluationType: existingEval.evaluationType as "call" | "meeting" | "chat",
+      });
+      const initialScores: Record<number, { level: ScoreLevel; comment: string }> = {};
+      existingEval.criteriaScores?.forEach(cs => {
+        initialScores[cs.criterionId] = {
+          level: cs.level as ScoreLevel,
+          comment: cs.comment ?? "",
+        };
+      });
+      setScores(initialScores);
+      setPrefilled(true);
+    }
+  }, [existingEval, isEditMode, prefilled]);
 
   const calculateScore = () => {
     if (!sections) return { total: 0, bySection: {} as Record<number, { score: number; max: number; percentage: number }>, level: "Slab" };
@@ -132,31 +166,48 @@ export default function NewEvaluation() {
 
     setIsSaving(true);
     try {
-      // Step 1: Create the evaluation
-      const evaluation = await createEvaluation.mutateAsync({
-        data: {
-          specialistId: parseInt(formData.specialistId),
-          date: formData.date,
-          time: formData.time,
-          clientName: formData.clientName,
-          evaluationType: formData.evaluationType,
-        }
-      });
+      let evaluationId: number;
 
-      // Step 2: Update with criteria scores
-      if (criteriaScores.length > 0) {
+      if (isEditMode && editId) {
+        // Edit mode: update existing draft directly
         await updateEvaluation.mutateAsync({
-          id: evaluation.id,
-          data: { criteriaScores }
+          id: editId,
+          data: {
+            date: formData.date,
+            time: formData.time,
+            clientName: formData.clientName,
+            evaluationType: formData.evaluationType,
+            criteriaScores,
+          }
         });
+        evaluationId = editId;
+      } else {
+        // Create mode: create then update with scores
+        const evaluation = await createEvaluation.mutateAsync({
+          data: {
+            specialistId: parseInt(formData.specialistId),
+            date: formData.date,
+            time: formData.time,
+            clientName: formData.clientName,
+            evaluationType: formData.evaluationType,
+          }
+        });
+        evaluationId = evaluation.id;
+
+        if (criteriaScores.length > 0) {
+          await updateEvaluation.mutateAsync({
+            id: evaluationId,
+            data: { criteriaScores }
+          });
+        }
       }
 
-      // Step 3: Attach audio if provided
+      // Attach audio if provided
       if (audioFile) {
         try {
           const base64 = await fileToBase64(audioFile);
           await attachAudio.mutateAsync({
-            id: evaluation.id,
+            id: evaluationId,
             data: { audioUrl: base64 }
           });
         } catch {
@@ -164,15 +215,16 @@ export default function NewEvaluation() {
         }
       }
 
-      // Step 4: Finalize if requested
+      // Finalize if requested
       if (finalize) {
-        await finalizeEvaluation.mutateAsync({ id: evaluation.id });
+        await finalizeEvaluation.mutateAsync({ id: evaluationId });
         toast({ title: "Evaluare finalizată" });
       } else {
         toast({ title: "Draft salvat" });
       }
 
-      setLocation(`/evaluations/${evaluation.id}`);
+      await queryClient.invalidateQueries({ queryKey: getListEvaluationsQueryKey() });
+      setLocation(`/evaluations/${evaluationId}`);
     } catch {
       toast({ variant: "destructive", title: "Eroare la salvare", description: "Vă rugăm încercați din nou." });
     } finally {
@@ -180,7 +232,7 @@ export default function NewEvaluation() {
     }
   };
 
-  if (isLoadingSpec || isLoadingSec) {
+  if (isLoadingSpec || isLoadingSec || (isEditMode && isLoadingExisting)) {
     return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -202,7 +254,9 @@ export default function NewEvaluation() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <h2 className="text-3xl font-bold tracking-tight">Evaluare nouă</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          {isEditMode ? "Editează draft" : "Evaluare nouă"}
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -383,7 +437,7 @@ export default function NewEvaluation() {
                       className="w-full"
                       disabled={isSaving}
                     >
-                      Salvează draft
+                      {isEditMode ? "Salvează modificările" : "Salvează draft"}
                     </Button>
                   </div>
                 </div>

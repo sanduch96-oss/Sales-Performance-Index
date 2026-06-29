@@ -1,11 +1,14 @@
-import { useListEvaluations } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { useListEvaluations, useDeleteEvaluation, getListEvaluationsQueryKey } from "@workspace/api-client-react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, CalendarIcon, UserIcon, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Plus, CalendarIcon, UserIcon, CheckCircle2, Clock, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 function getScoreBadge(score: number | null) {
   if (score === null) return null;
@@ -16,12 +19,26 @@ function getScoreBadge(score: number | null) {
 
 export default function Evaluations() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: evaluations, isLoading } = useListEvaluations();
+  const deleteEvaluation = useDeleteEvaluation();
 
-  const filtered = evaluations?.filter(ev => 
-    ev.specialistName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filtered = evaluations?.filter(ev =>
+    ev.specialistName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ev.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteEvaluation.mutateAsync({ id });
+      await queryClient.invalidateQueries({ queryKey: getListEvaluationsQueryKey() });
+      toast({ title: "Evaluare ștearsă" });
+    } catch {
+      toast({ variant: "destructive", title: "Eroare la ștergere" });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -38,14 +55,14 @@ export default function Evaluations() {
       <Card>
         <CardContent className="p-0">
           <div className="p-4 border-b">
-            <Input 
-              placeholder="Caută după specialist sau client..." 
+            <Input
+              placeholder="Caută după specialist sau client..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md"
             />
           </div>
-          
+
           {isLoading ? (
             <div className="flex h-40 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : filtered?.length === 0 ? (
@@ -100,10 +117,52 @@ export default function Evaluations() {
                           <span className="font-bold">{ev.totalScore !== null ? `${ev.totalScore}/100` : "-"}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link href={`/evaluations/${ev.id}`}>
-                          <Button variant="ghost" size="sm">Vezi</Button>
-                        </Link>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link href={`/evaluations/${ev.id}`}>
+                            <Button variant="ghost" size="sm">Vezi</Button>
+                          </Link>
+                          {ev.status === "draft" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => setLocation(`/evaluations/new?editId=${ev.id}`)}
+                              >
+                                <Pencil className="h-4 w-4 mr-1" /> Editează
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" /> Șterge
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Șterge evaluarea?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Această acțiune este ireversibilă. Evaluarea draft pentru <strong>{ev.specialistName}</strong> va fi ștearsă definitiv.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Anulare</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-red-600 hover:bg-red-700"
+                                      onClick={() => handleDelete(ev.id)}
+                                    >
+                                      Șterge
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

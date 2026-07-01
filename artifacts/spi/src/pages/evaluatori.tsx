@@ -15,12 +15,87 @@ interface Evaluator {
   username: string;
   email: string | null;
   emailVerified: boolean;
+  lastPlainPassword: string | null;
 }
 
 interface CreatedEvaluator {
   id: number;
   username: string;
   password: string;
+}
+
+function EvaluatorCard({ ev }: { ev: Evaluator }) {
+  const [showPass, setShowPass] = useState(false);
+  const [copiedLogin, setCopiedLogin] = useState(false);
+  const [copiedPass, setCopiedPass] = useState(false);
+
+  const copyText = async (text: string, type: "login" | "pass") => {
+    await navigator.clipboard.writeText(text);
+    if (type === "login") {
+      setCopiedLogin(true);
+      setTimeout(() => setCopiedLogin(false), 2000);
+    } else {
+      setCopiedPass(true);
+      setTimeout(() => setCopiedPass(false), 2000);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+            {ev.username.charAt(0).toUpperCase()}
+          </div>
+          {ev.username}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-3">
+        {/* Login row */}
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Login</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-muted px-2 py-1 rounded text-xs font-mono">{ev.username}</code>
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => copyText(ev.username, "login")}>
+              {copiedLogin ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Password row */}
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Parolă</p>
+          {ev.lastPlainPassword ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-muted px-2 py-1 rounded text-xs font-mono tracking-widest">
+                {showPass ? ev.lastPlainPassword : "••••••••••"}
+              </code>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setShowPass(v => !v)}>
+                {showPass ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => copyText(ev.lastPlainPassword!, "pass")}>
+                {copiedPass ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Parolă necunoscută</p>
+          )}
+        </div>
+
+        {ev.email && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Email:</span>
+            <span className="truncate max-w-[160px]">{ev.email}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Rol:</span>
+          <Badge variant="secondary">Evaluator</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Evaluatori() {
@@ -111,32 +186,7 @@ export default function Evaluatori() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {evaluatori.map((ev) => (
-            <Card key={ev.id}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {ev.username.charAt(0).toUpperCase()}
-                  </div>
-                  {ev.username}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Login:</span>
-                  <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">{ev.username}</code>
-                </div>
-                {ev.email && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Email:</span>
-                    <span className="text-xs truncate max-w-[160px]">{ev.email}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Rol:</span>
-                  <Badge variant="secondary">Evaluator</Badge>
-                </div>
-              </CardContent>
-            </Card>
+            <EvaluatorCard key={ev.id} ev={ev} />
           ))}
         </div>
       )}

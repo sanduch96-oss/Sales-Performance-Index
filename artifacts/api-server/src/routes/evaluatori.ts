@@ -47,6 +47,7 @@ router.get("/evaluatori", requireAuth, requireAdmin, async (req, res): Promise<v
       username: usersTable.username,
       email: usersTable.email,
       emailVerified: usersTable.emailVerified,
+      lastPlainPassword: usersTable.lastPlainPassword,
     })
     .from(usersTable)
     .where(eq(usersTable.role, "evaluator"));

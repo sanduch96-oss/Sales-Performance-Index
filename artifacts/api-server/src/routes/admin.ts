@@ -40,7 +40,7 @@ router.post("/admin/reset-users", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.delete(usersTable);
+  await db.execute(sql`TRUNCATE TABLE users CASCADE`);
 
   const passwordHash = await bcrypt.hash("password", 10);
   await db.insert(usersTable).values({

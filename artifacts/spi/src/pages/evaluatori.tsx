@@ -45,6 +45,7 @@ interface Assignment {
   specialistId: number;
   specialistFirstName: string | null;
   specialistLastName: string | null;
+  specialistPosition: string | null;
   dayOfMonth: number;
   evaluationsCount: number;
 }
@@ -155,9 +156,10 @@ function ProfileModal({ ev, open, onClose }: { ev: Evaluator; open: boolean; onC
     enabled: open,
   });
 
+  // Folosim endpoint-ul existent /api/specialists (fără archived=true = returnează activi)
   const { data: specialists = [] } = useQuery<Specialist[]>({
-    queryKey: ["specialists-list"],
-    queryFn: () => customFetch<Specialist[]>("/api/specialists/list"),
+    queryKey: ["specialists"],
+    queryFn: () => customFetch<Specialist[]>("/api/specialists"),
     enabled: open,
   });
 
@@ -190,7 +192,8 @@ function ProfileModal({ ev, open, onClose }: { ev: Evaluator; open: boolean; onC
     onError: (err: any) => toast({ variant: "destructive", title: "Eroare", description: err?.message }),
   });
 
-  const canAdd = newSpecialistId && newDay && parseInt(newDay) >= 1 && parseInt(newDay) <= 31 && parseInt(newCount) >= 1;
+  const dayNum = parseInt(newDay);
+  const canAdd = newSpecialistId && newDay && dayNum >= 1 && dayNum <= 31 && parseInt(newCount) >= 1;
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
@@ -225,7 +228,7 @@ function ProfileModal({ ev, open, onClose }: { ev: Evaluator; open: boolean; onC
                 <CalendarDays className="h-8 w-8 text-primary/60" />
                 <div>
                   <div className="text-2xl font-bold">{profile.assignments.length}</div>
-                  <div className="text-xs text-muted-foreground">Sarcini active</div>
+                  <div className="text-xs text-muted-foreground">Sarcini planificate</div>
                 </div>
               </div>
             </div>
@@ -233,21 +236,33 @@ function ProfileModal({ ev, open, onClose }: { ev: Evaluator; open: boolean; onC
             {/* Sarcini alocate */}
             <div className="space-y-3">
               <h3 className="font-semibold text-sm flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-primary" /> Sarcini lunare alocate
+                <CalendarDays className="h-4 w-4 text-primary" />
+                Sarcini lunare alocate
+                <Badge variant="secondary" className="ml-auto text-xs">{profile.assignments.length} total</Badge>
               </h3>
 
               {profile.assignments.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">Nicio sarcină alocată.</p>
+                <p className="text-sm text-muted-foreground italic">Nicio sarcină alocată încă.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5 max-h-52 overflow-y-auto">
                   {profile.assignments.map(a => (
-                    <div key={a.id} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium">{a.specialistFirstName} {a.specialistLastName}</span>
-                        <span className="text-muted-foreground ml-2">
-                          — {a.evaluationsCount} eval. în ziua <strong>{a.dayOfMonth}</strong> a lunii
-                        </span>
+                    <div key={a.id} className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                      {/* Ziua — evidențiată */}
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0 border">
+                        <span className="text-xs text-muted-foreground leading-none">zi</span>
+                        <span className="text-base font-bold text-primary leading-tight">{a.dayOfMonth}</span>
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          {a.specialistFirstName} {a.specialistLastName}
+                        </div>
+                        {a.specialistPosition && (
+                          <div className="text-xs text-muted-foreground">{a.specialistPosition}</div>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {a.evaluationsCount} eval.
+                      </Badge>
                       <Button
                         size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                         onClick={() => deleteAssignment.mutate(a.id)}
@@ -261,50 +276,58 @@ function ProfileModal({ ev, open, onClose }: { ev: Evaluator; open: boolean; onC
               )}
 
               {/* Formular adăugare sarcină */}
-              <div className="rounded-lg border border-dashed p-3 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Adaugă sarcină</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-3 space-y-1">
+              <div className="rounded-lg border border-dashed p-4 space-y-3 bg-muted/10">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> Adaugă sarcină nouă
+                </p>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Poți adăuga mai multe sarcini pentru zile diferite, inclusiv pentru același specialist.
+                </p>
+                <div className="space-y-2">
+                  <div className="space-y-1">
                     <Label className="text-xs">Specialist</Label>
                     <Select value={newSpecialistId} onValueChange={setNewSpecialistId}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Selectează specialist..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {specialists.map(s => (
+                        {specialists.map((s: any) => (
                           <SelectItem key={s.id} value={String(s.id)}>
-                            {s.firstName} {s.lastName} — {s.position}
+                            {s.firstName} {s.lastName}
+                            {s.position ? ` — ${s.position}` : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Ziua lunii</Label>
-                    <Input
-                      type="number" min={1} max={31} placeholder="ex: 15"
-                      className="h-8 text-xs" value={newDay}
-                      onChange={e => setNewDay(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ziua lunii (1–31)</Label>
+                      <Input
+                        type="number" min={1} max={31} placeholder="ex: 15"
+                        className="h-9" value={newDay}
+                        onChange={e => setNewDay(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nr. evaluări în acea zi</Label>
+                      <Input
+                        type="number" min={1} placeholder="ex: 2"
+                        className="h-9" value={newCount}
+                        onChange={e => setNewCount(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nr. evaluări</Label>
-                    <Input
-                      type="number" min={1} placeholder="ex: 2"
-                      className="h-8 text-xs" value={newCount}
-                      onChange={e => setNewCount(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      size="sm" className="w-full h-8 text-xs"
-                      disabled={!canAdd || addAssignment.isPending}
-                      onClick={() => addAssignment.mutate()}
-                    >
-                      {addAssignment.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                      Adaugă
-                    </Button>
-                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={!canAdd || addAssignment.isPending}
+                    onClick={() => addAssignment.mutate()}
+                  >
+                    {addAssignment.isPending
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <Plus className="mr-2 h-4 w-4" />}
+                    Adaugă sarcină
+                  </Button>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, evaluationsTable, specialistsTable, evaluatorAssignmentsTable } from "@workspace/db";
-import { eq, and, count, desc } from "drizzle-orm";
+import { eq, and, count, desc, asc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -53,26 +53,19 @@ router.get("/evaluatori/:id/profile", requireAuth, requireAdmin, async (req, res
       specialistId: evaluatorAssignmentsTable.specialistId,
       specialistFirstName: specialistsTable.firstName,
       specialistLastName: specialistsTable.lastName,
+      specialistPosition: specialistsTable.position,
       dayOfMonth: evaluatorAssignmentsTable.dayOfMonth,
       evaluationsCount: evaluatorAssignmentsTable.evaluationsCount,
     })
     .from(evaluatorAssignmentsTable)
     .leftJoin(specialistsTable, eq(evaluatorAssignmentsTable.specialistId, specialistsTable.id))
-    .where(eq(evaluatorAssignmentsTable.evaluatorId, id));
+    .where(eq(evaluatorAssignmentsTable.evaluatorId, id))
+    .orderBy(asc(evaluatorAssignmentsTable.dayOfMonth));
 
   res.json({ evaluator: { ...evaluator, totalEvaluations: Number(total) }, evaluations, assignments });
 });
 
-// GET /api/specialists/list — lightweight list for assignment dropdown
-router.get("/specialists/list", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
-  const specialists = await db
-    .select({ id: specialistsTable.id, firstName: specialistsTable.firstName, lastName: specialistsTable.lastName, position: specialistsTable.position })
-    .from(specialistsTable)
-    .where(eq(specialistsTable.archived, false));
-  res.json(specialists);
-});
-
-// POST /api/evaluatori/:id/assignments
+// POST /api/evaluatori/:id/assignments — mereu INSERT (permite mai multe sarcini pe zile diferite)
 router.post("/evaluatori/:id/assignments", requireAuth, requireAdmin, async (req, res): Promise<void> => {
   const evaluatorId = parseInt(String(req.params.id), 10);
   if (isNaN(evaluatorId)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -88,21 +81,15 @@ router.post("/evaluatori/:id/assignments", requireAuth, requireAdmin, async (req
 
   const adminId = (req as any).adminId;
 
-  const [existing] = await db
-    .select({ id: evaluatorAssignmentsTable.id })
-    .from(evaluatorAssignmentsTable)
-    .where(and(eq(evaluatorAssignmentsTable.evaluatorId, evaluatorId), eq(evaluatorAssignmentsTable.specialistId, specialistId)));
+  await db.insert(evaluatorAssignmentsTable).values({
+    evaluatorId,
+    specialistId,
+    dayOfMonth,
+    evaluationsCount,
+    createdBy: adminId,
+  });
 
-  if (existing) {
-    await db
-      .update(evaluatorAssignmentsTable)
-      .set({ dayOfMonth, evaluationsCount, updatedAt: new Date() })
-      .where(eq(evaluatorAssignmentsTable.id, existing.id));
-    res.json({ ok: true, updated: true });
-  } else {
-    await db.insert(evaluatorAssignmentsTable).values({ evaluatorId, specialistId, dayOfMonth, evaluationsCount, createdBy: adminId });
-    res.json({ ok: true, created: true });
-  }
+  res.json({ ok: true, created: true });
 });
 
 // DELETE /api/evaluatori/:id/assignments/:assignmentId

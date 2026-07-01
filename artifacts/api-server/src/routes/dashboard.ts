@@ -219,6 +219,95 @@ router.get("/dashboard/low-performers", requireAuth, async (_req, res): Promise<
   res.json(result);
 });
 
+// GET /api/dashboard/top-performers — specialiști cu scorul mediu finalizat > 80
+router.get("/dashboard/top-performers", requireAuth, async (_req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT
+      s.id,
+      s.first_name,
+      s.last_name,
+      s.position,
+      s.department,
+      s.hire_date,
+      s.manager,
+      s.status,
+      s.archived,
+      s.created_at,
+      AVG(e.total_score) as avg_score,
+      COUNT(e.id) as eval_count
+    FROM specialists s
+    LEFT JOIN evaluations e ON e.specialist_id = s.id AND e.status = 'finalized'
+    WHERE s.archived = false
+    GROUP BY s.id, s.first_name, s.last_name, s.position, s.department, s.hire_date, s.manager, s.status, s.archived, s.created_at
+    HAVING AVG(e.total_score) > 80
+    ORDER BY AVG(e.total_score) DESC
+  `);
+
+  const result = (rows.rows as Array<{
+    id: number; first_name: string; last_name: string; position: string; department: string;
+    hire_date: string; manager: string | null; status: string; archived: boolean;
+    created_at: Date; avg_score: number | null; eval_count: number;
+  }>).map((r) => ({
+    id: Number(r.id),
+    firstName: String(r.first_name),
+    lastName: String(r.last_name),
+    position: String(r.position),
+    department: String(r.department),
+    hireDate: String(r.hire_date),
+    manager: r.manager ?? null,
+    status: String(r.status),
+    archived: Boolean(r.archived),
+    spiScore: r.avg_score != null ? Math.round(parseFloat(String(r.avg_score)) * 10) / 10 : null,
+    evaluationCount: Number(r.eval_count),
+    createdAt: new Date(r.created_at).toISOString(),
+  }));
+
+  res.json(result);
+});
+
+// GET /api/dashboard/criterion-stats — cel mai bun și cel mai slab criteriu
+router.get("/dashboard/criterion-stats", requireAuth, async (_req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT
+      cr.id as criterion_id,
+      cr.name as criterion_name,
+      cr.weight,
+      SUM(
+        CASE
+          WHEN csc.level = 'good' THEN cr.weight
+          WHEN csc.level = 'medium' THEN cr.weight * 0.6
+          ELSE 0
+        END
+      ) / NULLIF(COUNT(csc.id), 0) as avg_points,
+      COUNT(csc.id) as total_scores
+    FROM criteria cr
+    LEFT JOIN criterion_scores csc ON csc.criterion_id = cr.id
+    LEFT JOIN evaluations e ON e.id = csc.evaluation_id AND e.status = 'finalized'
+    WHERE csc.id IS NOT NULL AND e.id IS NOT NULL
+    GROUP BY cr.id, cr.name, cr.weight
+    HAVING COUNT(csc.id) > 0
+    ORDER BY avg_points DESC
+  `);
+
+  const items = (rows.rows as Array<{
+    criterion_id: number; criterion_name: string; weight: number; avg_points: number | null; total_scores: number;
+  }>).map(r => ({
+    id: Number(r.criterion_id),
+    name: String(r.criterion_name),
+    weight: parseFloat(String(r.weight)),
+    avgPoints: r.avg_points != null ? Math.round(parseFloat(String(r.avg_points)) * 100) / 100 : null,
+    totalScores: Number(r.total_scores),
+    pct: r.avg_points != null && r.weight > 0
+      ? Math.round((parseFloat(String(r.avg_points)) / parseFloat(String(r.weight))) * 1000) / 10
+      : null,
+  }));
+
+  const best = items[0] ?? null;
+  const worst = items[items.length - 1] ?? null;
+
+  res.json({ best, worst, all: items });
+});
+
 // GET /api/dashboard/evaluator-task-list — lista sarcinilor alocate evaluatorului cu status
 router.get("/dashboard/evaluator-task-list", requireAuth, async (req, res): Promise<void> => {
   const userId = (req.session as any).userId as number;

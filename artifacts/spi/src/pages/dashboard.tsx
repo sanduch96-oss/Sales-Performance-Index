@@ -203,19 +203,28 @@ type TaskEntry = {
   evaluations: { id: number; date: string; clientName: string; status: string; totalScore: number | null }[];
 };
 
+type CriterionStat = { id: number; name: string; weight: number; avgPoints: number | null; pct: number | null; totalScores: number };
+type SpecialistPerf = { id: number; firstName: string; lastName: string; position: string; spiScore: number | null; evaluationCount: number };
+
 function EvaluatorDashboard() {
   const { t } = useLanguage();
   const { data: user } = useGetMe();
   const [taskOpen, setTaskOpen] = useState(false);
 
-  const { data: progress, isLoading } = useQuery<{ target: number; done: number; total: number; month: string }>({
+  const { data: progress, isLoading: isLoadingProgress } = useQuery<{ target: number; done: number; total: number; month: string }>({
     queryKey: ["evaluator-progress"],
     queryFn: () => customFetch("/api/dashboard/evaluator-progress"),
   });
-  const { data: recent = [], isLoading: isLoadingRecent } = useQuery<any[]>({
-    queryKey: ["my-evaluations"],
-    queryFn: () => customFetch("/api/evaluations?myEvaluations=true"),
-    enabled: !!user,
+  const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
+  const { data: trend } = useGetMonthlyTrend();
+  const { data: lowPerformers = [] } = useGetLowPerformers();
+  const { data: topPerformers = [] } = useQuery<SpecialistPerf[]>({
+    queryKey: ["top-performers"],
+    queryFn: () => customFetch("/api/dashboard/top-performers"),
+  });
+  const { data: criterionStats } = useQuery<{ best: CriterionStat | null; worst: CriterionStat | null }>({
+    queryKey: ["criterion-stats"],
+    queryFn: () => customFetch("/api/dashboard/criterion-stats"),
   });
   const { data: taskList = [], isLoading: isLoadingTasks } = useQuery<TaskEntry[]>({
     queryKey: ["evaluator-task-list"],
@@ -227,11 +236,23 @@ function EvaluatorDashboard() {
     ? Math.min(Math.round((progress.done / progress.target) * 100), 100)
     : 0;
 
+  const now = new Date();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const toYM = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const [trendFrom] = useState(toYM(sixMonthsAgo));
+  const [trendTo] = useState(toYM(now));
+
+  const filteredTrend = trend?.filter(p => p.month >= trendFrom && p.month <= trendTo) ?? [];
+
   const monthName = progress?.month
     ? new Date(progress.month + "-01").toLocaleDateString("ro-RO", { month: "long", year: "numeric" })
     : "";
 
-  if (isLoading) {
+  const scoreChange = summary?.averageScoreLastMonth
+    ? (summary.averageTeamScore ?? 0) - summary.averageScoreLastMonth
+    : 0;
+
+  if (isLoadingProgress || isLoadingSummary) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -246,37 +267,35 @@ function EvaluatorDashboard() {
         <p className="text-muted-foreground">{monthName}</p>
       </div>
 
+      {/* Rând 1: Scor mediu echipă + Progres meu + Total */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Progres lunar */}
-        <Card className="md:col-span-2">
+        {/* Scorul mediu al echipei */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Progres evaluări — {monthName}</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.avgScore}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {progress && progress.target > 0 ? (
-              <>
-                <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-primary">{progress.done}</span>
-                  <span className="text-muted-foreground text-lg">/ {progress.target} planificate</span>
-                </div>
-                <Progress value={percent} className="h-3" />
-                <p className="text-xs text-muted-foreground">
-                  {percent}% finalizat{progress.done >= progress.target ? " ✓" : ` — mai rămân ${progress.target - progress.done}`}
-                </p>
-              </>
-            ) : (
-              <div className="py-4 text-muted-foreground text-sm">
-                Nicio sarcină de evaluare alocată pentru această lună.
-              </div>
-            )}
+          <CardContent>
+            <div className="text-4xl font-bold text-primary">
+              {summary?.averageTeamScore != null ? `${summary.averageTeamScore}` : "—"}
+              <span className="text-xl font-normal text-muted-foreground">/100</span>
+            </div>
+            <p className="text-xs text-muted-foreground flex items-center mt-2">
+              {scoreChange > 0 ? (
+                <><TrendingUp className="mr-1 h-3 w-3 text-green-500" /><span className="text-green-500">+{scoreChange.toFixed(1)} față de luna trecută</span></>
+              ) : scoreChange < 0 ? (
+                <><TrendingDown className="mr-1 h-3 w-3 text-red-500" /><span className="text-red-500">{scoreChange.toFixed(1)} față de luna trecută</span></>
+              ) : (
+                <><Minus className="mr-1 h-3 w-3" />{t.dashboard.noChanges}</>
+              )}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Total toate timpurile + buton ochi */}
-        <Card>
+        {/* Progres evaluări + Total — card combinat */}
+        <Card className="md:col-span-2">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
+              <CardTitle className="text-sm font-medium">Evaluările mele — {monthName}</CardTitle>
               <Button
                 variant="ghost"
                 size="icon"
@@ -289,15 +308,173 @@ function EvaluatorDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{progress?.total ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">evaluări efectuate total</p>
-            {(progress?.target ?? 0) > 0 && (
-              <button
-                onClick={() => setTaskOpen(true)}
-                className="mt-2 text-xs text-primary underline underline-offset-2 hover:no-underline"
-              >
-                {progress!.target} planificate luna aceasta →
-              </button>
+            <div className="flex items-center gap-6">
+              <div>
+                <div className="text-3xl font-bold">{progress?.total ?? 0}</div>
+                <p className="text-xs text-muted-foreground">efectuate total</p>
+              </div>
+              <div className="flex-1 space-y-2">
+                {progress && progress.target > 0 ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Luna aceasta</span>
+                      <span className="font-medium">{progress.done}/{progress.target}</span>
+                    </div>
+                    <Progress value={percent} className="h-2.5" />
+                    <p className="text-xs text-muted-foreground">
+                      {percent}% finalizat{progress.done >= progress.target
+                        ? " ✓"
+                        : ` — mai rămân ${progress.target - progress.done}`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nicio sarcină alocată luna aceasta</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Rând 2: Progresul echipei pe lună (grafic) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Progresul echipei pe lună</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredTrend.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">{t.dashboard.noData}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={filteredTrend} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(v: number) => [`${v}/100`, "Scor mediu"]}
+                  labelFormatter={(l) => {
+                    const [y, m] = String(l).split("-");
+                    return new Date(+y, +m - 1, 1).toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+                  }}
+                />
+                <Line type="monotone" dataKey="averageScore" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Rând 3: Top + Slabi specialiști */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Cei mai buni specialiști (>80) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" /> Cei mai buni specialiști (&gt;80)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topPerformers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4 text-sm">Niciun specialist cu scor &gt;80</p>
+            ) : (
+              <div className="space-y-2">
+                {topPerformers.slice(0, 5).map(sp => (
+                  <Link key={sp.id} href={`/specialists/${sp.id}`}>
+                    <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{sp.firstName} {sp.lastName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{sp.position}</p>
+                      </div>
+                      <Badge className="bg-green-500 hover:bg-green-600 shrink-0 ml-3">
+                        {sp.spiScore}/100
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Cei mai slabi specialiști (<70) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-500" /> Specialiști cu risc (&lt;70)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(lowPerformers as SpecialistPerf[]).length === 0 ? (
+              <p className="text-center text-muted-foreground py-4 text-sm">Niciun specialist sub 70</p>
+            ) : (
+              <div className="space-y-2">
+                {(lowPerformers as SpecialistPerf[]).slice(0, 5).map(sp => (
+                  <Link key={sp.id} href={`/specialists/${sp.id}`}>
+                    <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{sp.firstName} {sp.lastName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{sp.position}</p>
+                      </div>
+                      <Badge variant="destructive" className="shrink-0 ml-3">
+                        {sp.spiScore}/100
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Rând 4: Cel mai bun și cel mai slab criteriu */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" /> Cel mai bun criteriu
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {criterionStats?.best ? (
+              <>
+                <p className="font-semibold text-base leading-tight">{criterionStats.best.name}</p>
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Scor mediu</span>
+                    <span className="font-medium text-green-600">{criterionStats.best.pct?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={criterionStats.best.pct ?? 0} className="h-2" />
+                  <p className="text-xs text-muted-foreground">{criterionStats.best.totalScores} scoruri înregistrate</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm py-2">Date insuficiente</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Circle className="h-4 w-4 text-red-400" /> Criteriu cu risc
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {criterionStats?.worst ? (
+              <>
+                <p className="font-semibold text-base leading-tight">{criterionStats.worst.name}</p>
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Scor mediu</span>
+                    <span className="font-medium text-red-600">{criterionStats.worst.pct?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={criterionStats.worst.pct ?? 0} className="h-2 [&>div]:bg-red-500" />
+                  <p className="text-xs text-muted-foreground">{criterionStats.worst.totalScores} scoruri înregistrate</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm py-2">Date insuficiente</p>
             )}
           </CardContent>
         </Card>
@@ -317,7 +494,6 @@ function EvaluatorDashboard() {
             <div className="space-y-6 py-2">
               {taskList.map(task => (
                 <div key={task.specialistId} className="border rounded-lg overflow-hidden">
-                  {/* Header specialist */}
                   <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
                     <div>
                       <p className="font-semibold">{task.specialistName}</p>
@@ -336,24 +512,17 @@ function EvaluatorDashboard() {
                       )}
                     </div>
                   </div>
-
-                  {/* Rânduri: efectuate */}
                   <div className="divide-y">
                     {task.evaluations.map(ev => (
                       <Link key={ev.id} href={`/evaluari/${ev.id}`}>
-                        <div
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors"
-                          onClick={() => setTaskOpen(false)}
-                        >
+                        <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setTaskOpen(false)}>
                           <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{ev.clientName || "—"}</p>
                             <p className="text-xs text-muted-foreground">{ev.date}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {ev.totalScore != null && (
-                              <span className="text-sm font-bold">{ev.totalScore}/100</span>
-                            )}
+                            {ev.totalScore != null && <span className="text-sm font-bold">{ev.totalScore}/100</span>}
                             <Badge variant={ev.status === "finalized" ? "default" : "secondary"} className="text-xs">
                               {ev.status === "finalized" ? "Finalizat" : "Ciornă"}
                             </Badge>
@@ -361,14 +530,9 @@ function EvaluatorDashboard() {
                         </div>
                       </Link>
                     ))}
-
-                    {/* Rânduri: rămase (placeholder) */}
                     {Array.from({ length: task.remaining }).map((_, i) => (
                       <Link key={`rem-${i}`} href={`/evaluations/new?specialistId=${task.specialistId}`}>
-                        <div
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors text-muted-foreground"
-                          onClick={() => setTaskOpen(false)}
-                        >
+                        <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors text-muted-foreground" onClick={() => setTaskOpen(false)}>
                           <Circle className="h-4 w-4 shrink-0" />
                           <p className="text-sm">Evaluare neefectuată — apasă pentru a crea</p>
                         </div>
@@ -381,42 +545,6 @@ function EvaluatorDashboard() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Evaluări recente */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Evaluările mele recente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingRecent ? (
-            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-          ) : !recent?.length ? (
-            <p className="text-center text-muted-foreground py-8">Nicio evaluare efectuată încă.</p>
-          ) : (
-            <div className="space-y-2">
-              {recent.slice(0, 10).map(ev => (
-                <Link key={ev.id} href={`/evaluari/${ev.id}`}>
-                  <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{ev.clientName}</p>
-                      <p className="text-sm text-muted-foreground">{ev.date}</p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 ml-4">
-                      {ev.totalScore != null && (
-                        <span className="font-bold">{ev.totalScore}/100</span>
-                      )}
-                      <Badge variant={ev.status === "finalized" ? "default" : "secondary"}>
-                        {ev.status === "finalized" ? "Finalizat" : "Ciornă"}
-                      </Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

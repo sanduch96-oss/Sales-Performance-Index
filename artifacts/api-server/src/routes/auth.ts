@@ -50,7 +50,19 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const [existingEmail] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existingEmail) {
-    res.status(400).json({ error: "Email already registered" });
+    if (existingEmail.emailVerified) {
+      res.status(400).json({ error: "Email already registered" });
+      return;
+    }
+    // Cont neconfirmat cu același email — actualizăm datele și retrimitem codul
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = generateCode();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+    await db.update(usersTable)
+      .set({ username, passwordHash, role: role || "evaluator", emailVerificationCode: code, emailVerificationExpiry: expiry })
+      .where(eq(usersTable.id, existingEmail.id));
+    try { await sendVerificationCode(email, code); } catch (err) { console.error("Email send failed:", err); }
+    res.status(201).json({ ok: true, email, username });
     return;
   }
 

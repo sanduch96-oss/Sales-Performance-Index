@@ -1,42 +1,82 @@
 import { useState } from "react";
-import { useRegister } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { customFetch } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Register() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("");
-  const register = useRegister();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const qc = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [step, setStep] = useState<"form" | "verify">("form");
+  const [loading, setLoading] = useState(false);
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [code, setCode] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    register.mutate(
-      { data: { username, password, role } },
-      {
-        onSuccess: () => {
-          toast({
-            title: "Cont creat cu succes",
-            description: "Ați fost autentificat automat.",
-          });
-          setLocation("/dashboard");
-        },
-        onError: () => {
-          toast({
-            variant: "destructive",
-            title: "Eroare la înregistrare",
-            description: "Verificați datele introduse și încercați din nou.",
-          });
-        },
-      }
-    );
+    setLoading(true);
+    try {
+      await customFetch<{ ok: boolean; email: string }>("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, email, role }),
+      });
+      setSentEmail(email);
+      setStep("verify");
+    } catch (err: any) {
+      const msg = err?.message ?? "Eroare la înregistrare";
+      toast({ variant: "destructive", title: "Eroare", description: msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await customFetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, code }),
+      });
+      await qc.invalidateQueries({ queryKey: ["me"] });
+      toast({ title: "Cont creat cu succes", description: "Bun venit!" });
+      setLocation("/dashboard");
+    } catch (err: any) {
+      const msg = err?.message ?? "Cod incorect sau expirat";
+      toast({ variant: "destructive", title: "Eroare", description: msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setLoading(true);
+    try {
+      await customFetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, email, role }),
+      });
+      toast({ title: "Cod retrimis", description: `Verificați ${sentEmail}` });
+    } catch {
+      toast({ variant: "destructive", title: "Eroare la retrimitere" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,52 +87,124 @@ export default function Register() {
             <img src="/logo.png" alt="SPI Logo" className="h-44 w-auto" />
           </div>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Nume utilizator</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                minLength={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Parolă</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Funcție / Job Title</Label>
-              <Input
-                id="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={register.isPending}>
-              {register.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Înregistrare
-            </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              Aveți deja cont?{" "}
-              <Link href="/login">
-                <span className="text-primary hover:underline cursor-pointer">Autentificare</span>
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+
+        {step === "form" ? (
+          <form onSubmit={handleRegister}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Nume utilizator</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
+                  autoComplete="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Parolă</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Poștă electronică</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="exemplu@companie.md"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Funcție / Job Title</Label>
+                <Input
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Înregistrare
+              </Button>
+              <div className="text-sm text-center text-muted-foreground">
+                Aveți deja cont?{" "}
+                <Link href="/login">
+                  <span className="text-primary hover:underline cursor-pointer">Autentificare</span>
+                </Link>
+              </div>
+            </CardFooter>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify}>
+            <CardContent className="space-y-5">
+              <div className="flex flex-col items-center text-center gap-3 py-2">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-base">Verificați posta electronică</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Am trimis un cod de 6 cifre la<br />
+                    <span className="font-medium text-foreground">{sentEmail}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="code">Cod de confirmare</Label>
+                <Input
+                  id="code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  maxLength={6}
+                  className="text-center text-2xl tracking-widest font-mono h-14"
+                  placeholder="• • • • • •"
+                  autoComplete="one-time-code"
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-3">
+              <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                Confirmare
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={handleResend}
+                disabled={loading}
+              >
+                Nu ați primit codul? Retrimiteți
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => setStep("form")}
+              >
+                ← Înapoi
+              </Button>
+            </CardFooter>
+          </form>
+        )}
       </Card>
     </div>
   );

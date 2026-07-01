@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
+const RESET_TOKEN = "spi-reset-2026-x9k2mP7q";
 
 async function requireAdmin(req: any, res: any, next: any) {
   const userId = req.session?.userId;
@@ -29,6 +31,26 @@ router.post("/admin/clear-email", requireAuth, requireAdmin, async (req, res): P
   }
 
   res.json({ ok: true, cleared: result });
+});
+
+router.post("/admin/reset-users", async (req, res): Promise<void> => {
+  const { token } = req.body as { token?: string };
+  if (token !== RESET_TOKEN) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  await db.delete(usersTable);
+
+  const passwordHash = await bcrypt.hash("password", 10);
+  await db.insert(usersTable).values({
+    username: "admin",
+    passwordHash,
+    role: "admin",
+    emailVerified: true,
+  });
+
+  res.json({ ok: true, message: "All users deleted. Admin recreated (admin/password)." });
 });
 
 export default router;

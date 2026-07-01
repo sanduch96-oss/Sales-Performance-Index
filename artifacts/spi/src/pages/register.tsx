@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, CheckCircle2, Terminal } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -24,17 +24,22 @@ export default function Register() {
   const [role, setRole] = useState("");
   const [code, setCode] = useState("");
   const [sentEmail, setSentEmail] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await customFetch<{ ok: boolean; email: string }>("/api/auth/register", {
+      const resp = await customFetch<{ ok: boolean; email: string; devCode?: string }>("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, email, role }),
       });
       setSentEmail(email);
+      if (resp.devCode) {
+        setDevCode(resp.devCode);
+        setCode(resp.devCode);
+      }
       setStep("verify");
     } catch (err: any) {
       const msg = err?.message ?? "Eroare la înregistrare";
@@ -67,11 +72,15 @@ export default function Register() {
   const handleResend = async () => {
     setLoading(true);
     try {
-      await customFetch("/api/auth/register", {
+      const resp2 = await customFetch<{ ok: boolean; devCode?: string }>("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, email, role }),
       });
+      if (resp2.devCode) {
+        setDevCode(resp2.devCode);
+        setCode(resp2.devCode);
+      }
       toast({ title: "Cod retrimis", description: `Verificați ${sentEmail}` });
     } catch {
       toast({ variant: "destructive", title: "Eroare la retrimitere" });
@@ -168,6 +177,15 @@ export default function Register() {
                   </p>
                 </div>
               </div>
+              {devCode && (
+                <div className="flex items-center gap-2 rounded-md border border-yellow-400 bg-yellow-50 px-3 py-2 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-700">
+                  <Terminal className="h-4 w-4 shrink-0" />
+                  <div className="text-xs">
+                    <span className="font-semibold">[DEV]</span> Cod completat automat:{" "}
+                    <span className="font-mono font-bold tracking-widest">{devCode}</span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="code">Cod de confirmare</Label>
                 <Input

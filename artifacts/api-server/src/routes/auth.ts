@@ -62,7 +62,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       .set({ username, passwordHash, role: role || "evaluator", emailVerificationCode: code, emailVerificationExpiry: expiry })
       .where(eq(usersTable.id, existingEmail.id));
     try { await sendVerificationCode(email, code); } catch (err) { console.error("Email send failed:", err); }
-    res.status(201).json({ ok: true, email, username });
+    const devResp: any = { ok: true, email, username };
+    if (process.env.NODE_ENV !== "production") devResp.devCode = code;
+    res.status(201).json(devResp);
     return;
   }
 
@@ -86,7 +88,9 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     console.error("Email send failed:", err);
   }
 
-  res.status(201).json({ ok: true, email });
+  const devResp: any = { ok: true, email };
+  if (process.env.NODE_ENV !== "production") devResp.devCode = code;
+  res.status(201).json(devResp);
 });
 
 router.post("/auth/verify-email", async (req, res): Promise<void> => {

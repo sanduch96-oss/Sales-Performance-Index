@@ -1,17 +1,25 @@
 import { Resend } from "resend";
 
-function getClient(): Resend {
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+function getClient(): Resend | null {
   const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    throw new Error("RESEND_API_KEY not set — email sending unavailable");
-  }
+  if (!key) return null;
   return new Resend(key);
 }
 
 const FROM = process.env.EMAIL_FROM ?? "SPI Platform <onboarding@resend.dev>";
 
 export async function sendVerificationCode(to: string, code: string): Promise<void> {
+  if (IS_DEV) {
+    console.log("\n========================================");
+    console.log("  [DEV] COD DE VERIFICARE EMAIL");
+    console.log(`  Destinatar : ${to}`);
+    console.log(`  Cod        : ${code}`);
+    console.log("========================================\n");
+  }
   const resend = getClient();
+  if (!resend) return;
   await resend.emails.send({
     from: FROM,
     to,
@@ -35,7 +43,15 @@ export async function sendVerificationCode(to: string, code: string): Promise<vo
 }
 
 export async function sendPasswordResetCode(to: string, code: string): Promise<void> {
+  if (IS_DEV) {
+    console.log("\n========================================");
+    console.log("  [DEV] COD RESETARE PAROLA");
+    console.log(`  Destinatar : ${to}`);
+    console.log(`  Cod        : ${code}`);
+    console.log("========================================\n");
+  }
   const resend = getClient();
+  if (!resend) return;
   await resend.emails.send({
     from: FROM,
     to,

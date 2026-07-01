@@ -15,6 +15,7 @@ import NewEvaluation from "@/pages/new-evaluation";
 import EvaluationDetail from "@/pages/evaluation-detail";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import Evaluatori from "@/pages/evaluatori";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ function AuthenticatedRoutes() {
         <Route path="/evaluations" component={Evaluations} />
         <Route path="/evaluations/new" component={NewEvaluation} />
         <Route path="/evaluations/:id" component={EvaluationDetail} />
+        <Route path="/evaluatori" component={Evaluatori} />
         <Route path="/reports" component={Reports} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />

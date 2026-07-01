@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -23,10 +24,13 @@ export function Sidebar() {
 
   const isSpecialist = user?.role === "user";
 
+  const isAdmin = user?.role === "admin";
+
   const adminNavigation = [
     { name: t.nav.dashboard, href: "/dashboard", icon: LayoutDashboard },
     { name: t.nav.specialists, href: "/specialists", icon: Users },
     { name: t.nav.evaluations, href: "/evaluations", icon: ClipboardList },
+    ...(isAdmin ? [{ name: t.nav.evaluatori, href: "/evaluatori", icon: UserCheck }] : []),
     { name: t.nav.reports, href: "/reports", icon: BarChart2 },
     { name: t.nav.settings, href: "/settings", icon: Settings },
   ];

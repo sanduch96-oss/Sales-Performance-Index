@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -127,13 +128,16 @@ export default function Register() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Funcție / Job Title</Label>
-                <Input
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  required
-                />
+                <Label htmlFor="role">Rol</Label>
+                <Select value={role} onValueChange={setRole} required>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Selectați rolul..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="evaluator">Evaluator</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">

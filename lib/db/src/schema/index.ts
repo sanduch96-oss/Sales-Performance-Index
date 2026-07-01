@@ -5,3 +5,4 @@ export * from "./evaluations";
 export * from "./tasks";
 export * from "./notifications";
 export * from "./evaluation-comments";
+export * from "./evaluator-assignments";

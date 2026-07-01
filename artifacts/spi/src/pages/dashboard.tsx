@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, TrendingUp, TrendingDown, Minus, Loader2, ChevronRight } from "lucide-react";
+import { Eye, TrendingUp, TrendingDown, Minus, Loader2, ChevronRight, CheckCircle2, Circle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -193,9 +193,21 @@ export default function Dashboard() {
   return <AdminDashboard />;
 }
 
+type TaskEntry = {
+  specialistId: number;
+  specialistName: string;
+  dayOfMonth: number;
+  planned: number;
+  done: number;
+  remaining: number;
+  evaluations: { id: number; date: string; clientName: string; status: string; totalScore: number | null }[];
+};
+
 function EvaluatorDashboard() {
   const { t } = useLanguage();
   const { data: user } = useGetMe();
+  const [taskOpen, setTaskOpen] = useState(false);
+
   const { data: progress, isLoading } = useQuery<{ target: number; done: number; total: number; month: string }>({
     queryKey: ["evaluator-progress"],
     queryFn: () => customFetch("/api/dashboard/evaluator-progress"),
@@ -204,6 +216,11 @@ function EvaluatorDashboard() {
     queryKey: ["my-evaluations"],
     queryFn: () => customFetch("/api/evaluations?myEvaluations=true"),
     enabled: !!user,
+  });
+  const { data: taskList = [], isLoading: isLoadingTasks } = useQuery<TaskEntry[]>({
+    queryKey: ["evaluator-task-list"],
+    queryFn: () => customFetch("/api/dashboard/evaluator-task-list"),
+    enabled: taskOpen,
   });
 
   const percent = progress && progress.target > 0
@@ -255,17 +272,115 @@ function EvaluatorDashboard() {
           </CardContent>
         </Card>
 
-        {/* Total toate timpurile */}
+        {/* Total toate timpurile + buton ochi */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                onClick={() => setTaskOpen(true)}
+                title="Vezi lista de evaluări"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold">{progress?.total ?? 0}</div>
             <p className="text-xs text-muted-foreground mt-1">evaluări efectuate total</p>
+            {(progress?.target ?? 0) > 0 && (
+              <button
+                onClick={() => setTaskOpen(true)}
+                className="mt-2 text-xs text-primary underline underline-offset-2 hover:no-underline"
+              >
+                {progress!.target} planificate luna aceasta →
+              </button>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog lista sarcini */}
+      <Dialog open={taskOpen} onOpenChange={setTaskOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lista evaluărilor — {monthName}</DialogTitle>
+          </DialogHeader>
+          {isLoadingTasks ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : !taskList.length ? (
+            <p className="text-center text-muted-foreground py-8">Nicio sarcină alocată.</p>
+          ) : (
+            <div className="space-y-6 py-2">
+              {taskList.map(task => (
+                <div key={task.specialistId} className="border rounded-lg overflow-hidden">
+                  {/* Header specialist */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
+                    <div>
+                      <p className="font-semibold">{task.specialistName}</p>
+                      <p className="text-xs text-muted-foreground">Ziua {task.dayOfMonth} a lunii</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={task.remaining === 0 ? "default" : "secondary"}>
+                        {task.done}/{task.planned}
+                      </Badge>
+                      {task.remaining > 0 && (
+                        <Link href={`/evaluations/new?specialistId=${task.specialistId}`}>
+                          <Button size="sm" variant="outline" onClick={() => setTaskOpen(false)}>
+                            + Evaluare nouă
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rânduri: efectuate */}
+                  <div className="divide-y">
+                    {task.evaluations.map(ev => (
+                      <Link key={ev.id} href={`/evaluari/${ev.id}`}>
+                        <div
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors"
+                          onClick={() => setTaskOpen(false)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{ev.clientName || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{ev.date}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {ev.totalScore != null && (
+                              <span className="text-sm font-bold">{ev.totalScore}/100</span>
+                            )}
+                            <Badge variant={ev.status === "finalized" ? "default" : "secondary"} className="text-xs">
+                              {ev.status === "finalized" ? "Finalizat" : "Ciornă"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+
+                    {/* Rânduri: rămase (placeholder) */}
+                    {Array.from({ length: task.remaining }).map((_, i) => (
+                      <Link key={`rem-${i}`} href={`/evaluations/new?specialistId=${task.specialistId}`}>
+                        <div
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 cursor-pointer transition-colors text-muted-foreground"
+                          onClick={() => setTaskOpen(false)}
+                        >
+                          <Circle className="h-4 w-4 shrink-0" />
+                          <p className="text-sm">Evaluare neefectuată — apasă pentru a crea</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Evaluări recente */}
       <Card>

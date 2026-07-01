@@ -219,6 +219,86 @@ router.get("/dashboard/low-performers", requireAuth, async (_req, res): Promise<
   res.json(result);
 });
 
+// GET /api/dashboard/evaluator-task-list — lista sarcinilor alocate evaluatorului cu status
+router.get("/dashboard/evaluator-task-list", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  // Toate asignările acestui evaluator
+  const assignments = await db
+    .select()
+    .from(evaluatorAssignmentsTable)
+    .where(eq(evaluatorAssignmentsTable.evaluatorId, userId));
+
+  if (assignments.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Specialiștii unici din asignări
+  const specialistIds = [...new Set(assignments.map(a => a.specialistId))];
+
+  // Evaluările efectuate de acest evaluator în luna curentă pentru acești specialiști
+  const doneEvals = await db
+    .select()
+    .from(evaluationsTable)
+    .where(
+      and(
+        eq(evaluationsTable.evaluatorId, userId),
+        sql`TO_CHAR(${evaluationsTable.date}::date, 'YYYY-MM') = ${thisMonth}`,
+        sql`${evaluationsTable.specialistId} = ANY(${sql.raw(`ARRAY[${specialistIds.join(",")}]`)})`,
+      ),
+    )
+    .orderBy(desc(evaluationsTable.date));
+
+  // Grupăm asignările pe specialist
+  const grouped: Record<number, { specialistId: number; planned: number; dayOfMonth: number; evaluations: any[] }> = {};
+
+  for (const a of assignments) {
+    if (!grouped[a.specialistId]) {
+      grouped[a.specialistId] = {
+        specialistId: a.specialistId,
+        planned: 0,
+        dayOfMonth: a.dayOfMonth,
+        evaluations: [],
+      };
+    }
+    grouped[a.specialistId].planned += a.evaluationsCount;
+  }
+
+  // Adăugăm evaluările efectuate
+  for (const ev of doneEvals) {
+    if (grouped[ev.specialistId]) {
+      grouped[ev.specialistId].evaluations.push({
+        id: ev.id,
+        date: ev.date,
+        clientName: ev.clientName,
+        status: ev.status,
+        totalScore: ev.totalScore ?? null,
+      });
+    }
+  }
+
+  // Îmbogățim cu numele specialistului
+  const result = await Promise.all(
+    Object.values(grouped).map(async (g) => {
+      const [spec] = await db.select().from(specialistsTable).where(eq(specialistsTable.id, g.specialistId));
+      return {
+        specialistId: g.specialistId,
+        specialistName: spec ? `${spec.firstName} ${spec.lastName}` : `#${g.specialistId}`,
+        dayOfMonth: g.dayOfMonth,
+        planned: g.planned,
+        done: g.evaluations.length,
+        remaining: Math.max(0, g.planned - g.evaluations.length),
+        evaluations: g.evaluations,
+      };
+    }),
+  );
+
+  res.json(result);
+});
+
 // GET /api/dashboard/evaluator-progress — progres lunar pentru evaluatorul curent
 router.get("/dashboard/evaluator-progress", requireAuth, async (req, res): Promise<void> => {
   const userId = (req.session as any).userId as number;

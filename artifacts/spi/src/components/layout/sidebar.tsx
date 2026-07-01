@@ -22,9 +22,9 @@ export function Sidebar() {
   const { data: user } = useGetMe();
   const { t } = useLanguage();
 
-  const isSpecialist = user?.role === "user";
+  const isSpecialist = user?.role?.toLowerCase() === "user";
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
 
   const adminNavigation = [
     { name: t.nav.dashboard, href: "/dashboard", icon: LayoutDashboard },

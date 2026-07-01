@@ -36,7 +36,7 @@ async function requireAdmin(req: any, res: any, next: any) {
   const userId = req.session?.userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (!user || user.role !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
+  if (!user || user.role.toLowerCase() !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
   next();
 }
 

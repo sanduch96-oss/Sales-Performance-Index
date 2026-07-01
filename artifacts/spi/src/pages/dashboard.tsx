@@ -20,9 +20,11 @@ import { Eye, TrendingUp, TrendingDown, Minus, Loader2, ChevronRight } from "luc
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
 import { LocalizedDatePicker } from "@/components/ui/localized-date-picker";
+import { customFetch } from "@workspace/api-client-react";
 
 function SpecialistDashboard({ specialistId }: { specialistId: number }) {
   const { t } = useLanguage();
@@ -184,7 +186,124 @@ export default function Dashboard() {
     return <SpecialistDashboard specialistId={user.specialistId} />;
   }
 
+  if (user?.role?.toLowerCase() === "evaluator") {
+    return <EvaluatorDashboard />;
+  }
+
   return <AdminDashboard />;
+}
+
+function EvaluatorDashboard() {
+  const { t } = useLanguage();
+  const { data: user } = useGetMe();
+  const { data: progress, isLoading } = useQuery<{ target: number; done: number; total: number; month: string }>({
+    queryKey: ["evaluator-progress"],
+    queryFn: () => customFetch("/api/dashboard/evaluator-progress"),
+  });
+  const { data: recent = [], isLoading: isLoadingRecent } = useQuery<any[]>({
+    queryKey: ["my-evaluations"],
+    queryFn: () => customFetch("/api/evaluations?myEvaluations=true"),
+    enabled: !!user,
+  });
+
+  const percent = progress && progress.target > 0
+    ? Math.min(Math.round((progress.done / progress.target) * 100), 100)
+    : 0;
+
+  const monthName = progress?.month
+    ? new Date(progress.month + "-01").toLocaleDateString("ro-RO", { month: "long", year: "numeric" })
+    : "";
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">{t.dashboard.title}</h2>
+        <p className="text-muted-foreground">{monthName}</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Progres lunar */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Progres evaluări — {monthName}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {progress && progress.target > 0 ? (
+              <>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-primary">{progress.done}</span>
+                  <span className="text-muted-foreground text-lg">/ {progress.target} planificate</span>
+                </div>
+                <Progress value={percent} className="h-3" />
+                <p className="text-xs text-muted-foreground">
+                  {percent}% finalizat{progress.done >= progress.target ? " ✓" : ` — mai rămân ${progress.target - progress.done}`}
+                </p>
+              </>
+            ) : (
+              <div className="py-4 text-muted-foreground text-sm">
+                Nicio sarcină de evaluare alocată pentru această lună.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Total toate timpurile */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t.dashboard.totalEvals}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">{progress?.total ?? 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">evaluări efectuate total</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Evaluări recente */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Evaluările mele recente</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRecent ? (
+            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : !recent?.length ? (
+            <p className="text-center text-muted-foreground py-8">Nicio evaluare efectuată încă.</p>
+          ) : (
+            <div className="space-y-2">
+              {recent.slice(0, 10).map(ev => (
+                <Link key={ev.id} href={`/evaluari/${ev.id}`}>
+                  <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{ev.clientName}</p>
+                      <p className="text-sm text-muted-foreground">{ev.date}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                      {ev.totalScore != null && (
+                        <span className="font-bold">{ev.totalScore}/100</span>
+                      )}
+                      <Badge variant={ev.status === "finalized" ? "default" : "secondary"}>
+                        {ev.status === "finalized" ? "Finalizat" : "Ciornă"}
+                      </Badge>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function AdminDashboard() {

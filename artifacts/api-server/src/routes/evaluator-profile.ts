@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, evaluationsTable, specialistsTable, evaluatorAssignmentsTable } from "@workspace/db";
+import { db, usersTable, evaluationsTable, specialistsTable, evaluatorAssignmentsTable, notificationsTable } from "@workspace/db";
 import { eq, and, count, desc, asc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -87,6 +87,21 @@ router.post("/evaluatori/:id/assignments", requireAuth, requireAdmin, async (req
     dayOfMonth,
     evaluationsCount,
     createdBy: adminId,
+  });
+
+  // Trimite notificare evaluatorului
+  const [specialist] = await db
+    .select({ firstName: specialistsTable.firstName, lastName: specialistsTable.lastName })
+    .from(specialistsTable)
+    .where(eq(specialistsTable.id, specialistId));
+
+  const specialistName = specialist ? `${specialist.firstName} ${specialist.lastName}` : `Specialist #${specialistId}`;
+  const message = `Ai primit o nouă sarcină: ${evaluationsCount} evaluare(i) pentru ${specialistName}, în ziua ${dayOfMonth} a lunii.`;
+
+  await db.insert(notificationsTable).values({
+    userId: evaluatorId,
+    type: "assignment",
+    message,
   });
 
   res.json({ ok: true, created: true });

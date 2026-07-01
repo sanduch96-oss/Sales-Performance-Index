@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, evaluationsTable, criteriaSectionsTable, criteriaTable, criterionScoresTable, specialistsTable } from "@workspace/db";
-import { eq, and, avg, count, lt, sql, desc } from "drizzle-orm";
+import { db, evaluationsTable, criteriaSectionsTable, criteriaTable, criterionScoresTable, specialistsTable, evaluatorAssignmentsTable } from "@workspace/db";
+import { eq, and, avg, count, lt, sql, desc, sum } from "drizzle-orm";
 import { GetRecentEvaluationsQueryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -217,6 +217,48 @@ router.get("/dashboard/low-performers", requireAuth, async (_req, res): Promise<
   }));
 
   res.json(result);
+});
+
+// GET /api/dashboard/evaluator-progress — progres lunar pentru evaluatorul curent
+router.get("/dashboard/evaluator-progress", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req.session as any).userId as number;
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  // Total sarcini alocate acestui evaluator (suma tuturor evaluationsCount)
+  const [targetRow] = await db
+    .select({ total: sum(evaluatorAssignmentsTable.evaluationsCount) })
+    .from(evaluatorAssignmentsTable)
+    .where(eq(evaluatorAssignmentsTable.evaluatorId, userId));
+
+  const target = Number(targetRow?.total ?? 0);
+
+  // Evaluări finalizate în luna curentă de acest evaluator
+  const [doneRow] = await db
+    .select({ cnt: count(evaluationsTable.id) })
+    .from(evaluationsTable)
+    .where(
+      and(
+        eq(evaluationsTable.evaluatorId, userId),
+        eq(evaluationsTable.status, "finalized"),
+        sql`TO_CHAR(${evaluationsTable.date}::date, 'YYYY-MM') = ${thisMonth}`,
+      ),
+    );
+
+  const done = Number(doneRow?.cnt ?? 0);
+
+  // Total evaluări efectuate de acest evaluator (toate timpurile)
+  const [totalRow] = await db
+    .select({ cnt: count(evaluationsTable.id) })
+    .from(evaluationsTable)
+    .where(eq(evaluationsTable.evaluatorId, userId));
+
+  res.json({
+    target,
+    done,
+    total: Number(totalRow?.cnt ?? 0),
+    month: thisMonth,
+  });
 });
 
 export default router;

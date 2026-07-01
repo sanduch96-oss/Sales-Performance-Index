@@ -41,7 +41,6 @@ export default function Specialists() {
     hireDate: new Date().toISOString().split("T")[0],
     manager: "",
     status: "active" as "active" | "inactive",
-    monthlyTarget: "",
   });
 
   const invalidateSpecialists = () => {
@@ -50,14 +49,13 @@ export default function Specialists() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const mt = formData.monthlyTarget ? parseInt(formData.monthlyTarget) : undefined;
-    const dataToSend = { ...formData, manager: formData.manager || undefined, monthlyTarget: mt };
+    const dataToSend = { ...formData, manager: formData.manager || undefined };
     createSpecialist.mutate({ data: dataToSend }, {
       onSuccess: () => {
         toast({ title: t.specialists.add });
         setIsAddDialogOpen(false);
         invalidateSpecialists();
-        setFormData({ firstName: "", lastName: "", position: "", department: "", hireDate: new Date().toISOString().split("T")[0], manager: "", status: "active", monthlyTarget: "" });
+        setFormData({ firstName: "", lastName: "", position: "", department: "", hireDate: new Date().toISOString().split("T")[0], manager: "", status: "active" });
       },
       onError: () => toast({ variant: "destructive", title: t.common.save }),
     });
@@ -201,10 +199,6 @@ export default function Specialists() {
                       <SelectItem value="inactive">{t.specialists.archived}</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthlyTarget">{t.specialists.monthlyTarget}</Label>
-                  <Input id="monthlyTarget" type="number" min={0} value={formData.monthlyTarget} onChange={e => setFormData({ ...formData, monthlyTarget: e.target.value })} placeholder="ex: 20" />
                 </div>
                 <div className="flex justify-end gap-2 mt-4">
                   <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>{t.common.cancel}</Button>

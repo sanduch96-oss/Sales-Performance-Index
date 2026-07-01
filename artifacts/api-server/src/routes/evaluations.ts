@@ -136,6 +136,10 @@ router.get("/evaluations", requireAuth, async (req, res): Promise<void> => {
   if (currentUser?.role === "user" && currentUser.specialistId) {
     conditions.push(eq(evaluationsTable.specialistId, currentUser.specialistId));
   }
+  // Evaluator requests only their own evaluations
+  if (req.query.myEvaluations === "true" || currentUser?.role?.toLowerCase() === "evaluator") {
+    conditions.push(eq(evaluationsTable.evaluatorId, sessionUserId));
+  }
 
   if (params.success) {
     if (params.data.specialistId) {

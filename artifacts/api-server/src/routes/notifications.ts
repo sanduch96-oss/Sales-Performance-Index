@@ -16,11 +16,26 @@ router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
 
   const result = await Promise.all(
     rows.map(async (n) => {
+      if (n.type === "assignment" || !n.evaluationId) {
+        return {
+          id: n.id,
+          evaluationId: null,
+          type: n.type ?? "assignment",
+          message: n.message ?? "",
+          read: n.read,
+          createdAt: n.createdAt.toISOString(),
+          specialistName: "",
+          date: "",
+          totalScore: null,
+        };
+      }
       const [ev] = await db.select().from(evaluationsTable).where(eq(evaluationsTable.id, n.evaluationId));
       const [specialist] = ev ? await db.select().from(specialistsTable).where(eq(specialistsTable.id, ev.specialistId)) : [null];
       return {
         id: n.id,
         evaluationId: n.evaluationId,
+        type: n.type ?? "evaluation",
+        message: n.message ?? null,
         read: n.read,
         createdAt: n.createdAt.toISOString(),
         specialistName: specialist ? `${specialist.firstName} ${specialist.lastName}` : "",

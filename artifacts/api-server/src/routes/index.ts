@@ -8,6 +8,7 @@ import dashboardRouter from "./dashboard";
 import tasksRouter from "./tasks";
 import notificationsRouter from "./notifications";
 import evaluatoriRouter from "./evaluatori";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(dashboardRouter);
 router.use(tasksRouter);
 router.use(notificationsRouter);
 router.use(evaluatoriRouter);
+router.use(adminRouter);
 
 export default router;

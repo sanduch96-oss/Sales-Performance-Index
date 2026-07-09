@@ -2,6 +2,8 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -49,5 +51,18 @@ app.use(
 );
 
 app.use("/api", router);
+app.use("/api", (_, res) => {
+  res.status(404).json({ error: "API route not found" });
+});
+
+const clientDist = path.resolve(
+  fileURLToPath(new URL("../../spi/dist/public", import.meta.url)),
+);
+
+app.use(express.static(clientDist, { index: false }));
+
+app.use((_, res) => {
+  res.sendFile(path.join(clientDist, "index.html"));
+});
 
 export default app;

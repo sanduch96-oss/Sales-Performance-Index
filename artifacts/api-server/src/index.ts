@@ -2,7 +2,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 
-config({ path: resolve(fileURLToPath(new URL("../../../.env", import.meta.url))) });
+const envPath = resolve(process.cwd(), ".env");
+config({ path: envPath });
 
 const { default: app } = await import("./app");
 const { logger } = await import("./lib/logger");

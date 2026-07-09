@@ -1,7 +1,13 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { config } from "dotenv";
 
-const rawPort = process.env["PORT"];
+config({ path: resolve(fileURLToPath(new URL("../../../.env", import.meta.url))) });
+
+const { default: app } = await import("./app");
+const { logger } = await import("./lib/logger");
+
+const rawPort = process.env["PORT"] ?? "5000";
 
 if (!rawPort) {
   throw new Error(

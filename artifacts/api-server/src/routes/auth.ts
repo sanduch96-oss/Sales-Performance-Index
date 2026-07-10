@@ -25,72 +25,90 @@ function generateCode(): string {
 }
 
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const { username, password, role, email } = req.body as {
-    username?: string; password?: string; role?: string; email?: string;
-  };
+  try {
+    const { username, password, role, email } = req.body as {
+      username?: string; password?: string; role?: string; email?: string;
+    };
 
-  if (!username || username.length < 3) {
-    res.status(400).json({ error: "Username must be at least 3 characters" });
-    return;
-  }
-  if (!password || password.length < 6) {
-    res.status(400).json({ error: "Password must be at least 6 characters" });
-    return;
-  }
-  if (!email || !email.includes("@")) {
-    res.status(400).json({ error: "Valid email required" });
-    return;
-  }
-
-  const [existingUsername] = await db.select().from(usersTable).where(eq(usersTable.username, username));
-  if (existingUsername) {
-    res.status(400).json({ error: "Username already taken" });
-    return;
-  }
-
-  const [existingEmail] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (existingEmail) {
-    if (existingEmail.emailVerified) {
-      res.status(400).json({ error: "Email already registered" });
+    if (!username || username.length < 3) {
+      res.status(400).json({ error: "Username must be at least 3 characters" });
       return;
     }
-    // Cont neconfirmat cu același email — actualizăm datele și retrimitem codul
+    if (!password || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      res.status(400).json({ error: "Valid email required" });
+      return;
+    }
+
+    const [existingUsername] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+    if (existingUsername) {
+      res.status(400).json({ error: "Username already taken" });
+      return;
+    }
+
+    const [existingEmail] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (existingEmail) {
+      if (existingEmail.emailVerified) {
+        res.status(400).json({ error: "Email already registered" });
+        return;
+      }
+      // Cont neconfirmat cu același email — actualizăm datele și retrimitem codul
+      const passwordHash = await bcrypt.hash(password, 10);
+      const code = generateCode();
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
+      await db.update(usersTable)
+        .set({ username, passwordHash, role: role || "evaluator", emailVerificationCode: code, emailVerificationExpiry: expiry })
+        .where(eq(usersTable.id, existingEmail.id));
+      try { await sendVerificationCode(email, code); } catch (err) { console.error("Email send failed:", err); }
+      const devResp: any = { ok: true, email, username };
+      if (process.env.NODE_ENV !== "production") devResp.devCode = code;
+      res.status(201).json(devResp);
+      return;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const code = generateCode();
     const expiry = new Date(Date.now() + 15 * 60 * 1000);
-    await db.update(usersTable)
-      .set({ username, passwordHash, role: role || "evaluator", emailVerificationCode: code, emailVerificationExpiry: expiry })
-      .where(eq(usersTable.id, existingEmail.id));
-    try { await sendVerificationCode(email, code); } catch (err) { console.error("Email send failed:", err); }
-    const devResp: any = { ok: true, email, username };
+
+    await db.insert(usersTable).values({
+      username,
+      passwordHash,
+      role: role || "evaluator",
+      email,
+      emailVerified: false,
+      emailVerificationCode: code,
+      emailVerificationExpiry: expiry,
+    });
+
+    try {
+      await sendVerificationCode(email, code);
+    } catch (err) {
+      console.error("Email send failed:", err);
+    }
+
+    const devResp: any = { ok: true, email };
     if (process.env.NODE_ENV !== "production") devResp.devCode = code;
     res.status(201).json(devResp);
-    return;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    const sqlError = error && typeof error === "object" && error !== null
+      ? ("sqlMessage" in error ? (error as any).sqlMessage : undefined) ||
+        ("sql" in error ? (error as any).sql : undefined) ||
+        ("code" in error ? (error as any).code : undefined)
+      : undefined;
+
+    console.error("Register failed:", {
+      message,
+      stack,
+      sqlError,
+      error,
+    });
+    res.status(500).json({ error: "Internal server error" });
   }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const code = generateCode();
-  const expiry = new Date(Date.now() + 15 * 60 * 1000);
-
-  await db.insert(usersTable).values({
-    username,
-    passwordHash,
-    role: role || "evaluator",
-    email,
-    emailVerified: false,
-    emailVerificationCode: code,
-    emailVerificationExpiry: expiry,
-  });
-
-  try {
-    await sendVerificationCode(email, code);
-  } catch (err) {
-    console.error("Email send failed:", err);
-  }
-
-  const devResp: any = { ok: true, email };
-  if (process.env.NODE_ENV !== "production") devResp.devCode = code;
-  res.status(201).json(devResp);
 });
 
 router.post("/auth/verify-email", async (req, res): Promise<void> => {

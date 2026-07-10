@@ -20,6 +20,9 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @workspace/spi run build
 RUN pnpm --filter @workspace/api-server run build
 
+# Push database schema during build stage while drizzle-kit is available
+RUN pnpm --filter @workspace/db run push
+
 # Runtime stage
 FROM node:22-bullseye-slim AS runner
 
@@ -44,3 +47,4 @@ ENV PORT=5000
 EXPOSE 5000
 
 CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+
